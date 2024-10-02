@@ -10,12 +10,13 @@ MC::MC(int size, int nparticles_, int npolymers_, int lpolymer_, const std::vect
 }
 
 void MC::generate_polymers(int npolymers, int lpolymer) {
-    int npoly = 0;
-    while (npoly < npolymers) {
-        if (add_random_poly(lpolymer)) {
-            ++npoly;
-        }
-    }
+    //int npoly = 0;
+    //while (npoly < npolymers) {
+    //    if (add_random_poly(lpolymer)) {
+    //        ++npoly;
+    //    }
+    //}
+    return;
 }
 
 bool MC::add_random_poly(int lpolymer) {
@@ -32,9 +33,10 @@ void MC::generate_particles(int nparticles) {
         int y = particles[idx][1];
         int z = particles[idx][2];
 
-        DHH1* new_dhh1 = new DHH1(std::make_tuple(x, y, z));
-        box.set_lattice(std::make_tuple(x, y, z), new_dhh1);
-        box.objects[npolymers + idx] = new_dhh1;  // Polymers must be generated first
+        box.create_new_DHH1(std::make_tuple(x, y, z),npolymers+idx);
+        //DHH1* new_dhh1 = new DHH1(std::make_tuple(x, y, z));
+        //box.set_lattice(std::make_tuple(x, y, z), new_dhh1);
+        //box.objects[npolymers + idx] = new_dhh1;  // Polymers must be generated first        
     }
 }
 
@@ -45,15 +47,10 @@ bool MC::monte_carlo_step() {
     std::uniform_int_distribution<int> dist(0, box.objects.size() - 1);
 
     int idx = dist(rng);
-    Object* object1 = box.objects[idx];
-
-    DHH1* dhh1_object = dynamic_cast<DHH1*>(object1);
-    if (!dhh1_object) {
-        return false;  // Skip if not DHH1 object
-    }
+    Object* object1 = box.objects[idx];    
 
     std::tuple<int, int, int> site1 = object1->getPosition();
-    std::tuple<int, int, int> site2 = dhh1_object->get_site_to_exchange(box);
+    std::tuple<int, int, int> site2 = object1->get_site_to_exchange(box);
 
     Object* object2 = box.get_lattice(site2);
 
@@ -61,8 +58,7 @@ bool MC::monte_carlo_step() {
     float initial_energy = box.compute_local_energy(site1) + box.compute_local_energy(site2);
 
     // Swap the particles
-    box.set_lattice(site1, object2);
-    box.set_lattice(site2, object1);
+    box.swap(site1, site2);
 
     // Compute energy after the move
     float final_energy = box.compute_local_energy(site1) + box.compute_local_energy(site2);
@@ -74,8 +70,7 @@ bool MC::monte_carlo_step() {
     std::uniform_real_distribution<float> rand_dist(0.0f, 1.0f);
     if (delta_e > 0 && rand_dist(rng) >= std::exp(-delta_e / T)) {
         // Reject the move (revert)
-        box.set_lattice(site1, object1);
-        box.set_lattice(site2, object2);
+        box.swap(site1, site2);
         return false;  // Move was rejected
     }
     return true;  // Move was accepted

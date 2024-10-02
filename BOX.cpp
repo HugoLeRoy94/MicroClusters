@@ -5,6 +5,7 @@
 #include <random>
 #include <algorithm>
 #include <iostream>
+#include <unordered_set>
 #include <cmath>
 
 int to_single_index(int x, int y, int z, int L) {
@@ -47,7 +48,7 @@ std::vector<std::array<int, 3>> generate_unique_triplets(int N, int L) {
 }
 
 BOX::BOX(int size_, int nobjects, const std::vector<std::vector<float>>& Interactions)
-    : size(size_), E(Interactions) {
+    : size(size_), E(Interactions){
     int total_sites = size * size * size;
     lattice.resize(total_sites);
 
@@ -66,26 +67,34 @@ BOX::BOX(int size_, int nobjects, const std::vector<std::vector<float>>& Interac
 }
 
 BOX::~BOX() {
-    // Delete all Objects in lattice
+    // Delete all unique Objects in lattice
+    std::unordered_set<Object*> unique_objects;
     for (auto obj : lattice) {
-        delete obj;
+        unique_objects.insert(obj);
     }
-    // Delete Objects in objects vector if they are not already deleted
-    for (auto obj : objects) {
-        if (obj) {
-            delete obj;
-        }
+    for (auto obj : unique_objects) {
+        delete obj;
     }
 }
 
-void BOX::set_lattice(const std::tuple<int, int, int>& site, Object* object) {
-    int x = std::get<0>(site);
-    int y = std::get<1>(site);
-    int z = std::get<2>(site);
-    int idx = to_single_index(x, y, z, size);
-    delete lattice[idx];  // Delete the existing object at that site
-    lattice[idx] = object;
-    object->setPosition(site);
+void BOX::create_new_DHH1(const std::tuple<int,int,int>& site, int object_idx){
+    DHH1* new_dhh1 = new DHH1(site);
+    int idx = to_single_index(std::get<0>(site), std::get<1>(site), std::get<2>(site), size);
+    delete lattice[idx];
+    lattice[idx] = new_dhh1;
+    objects[object_idx] = new_dhh1;
+    new_dhh1->setPosition(site);
+}
+
+void BOX::swap(const std::tuple<int, int, int>& site1, const std::tuple<int, int, int>& site2) {
+    int idx1 = to_single_index(std::get<0>(site1), std::get<1>(site1), std::get<2>(site1), size);
+    int idx2 = to_single_index(std::get<0>(site2), std::get<1>(site2), std::get<2>(site2), size);
+
+    std::swap(lattice[idx1], lattice[idx2]);
+
+    // Update the positions of the objects
+    lattice[idx1]->setPosition(site1);
+    lattice[idx2]->setPosition(site2);
 }
 
 Object* BOX::get_lattice(const std::tuple<int, int, int>& site) const {
