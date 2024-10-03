@@ -12,8 +12,9 @@ public:
     std::vector<Object*> lattice;  // 1D vector to represent 3D lattice
     std::vector<Object*> objects;
     std::vector<std::vector<float>> E;  // Interaction matrix
+    double Evalence;
 
-    BOX(int size_, int nobjects,const std::vector<std::vector<float>>& Interactions);
+    BOX(int size_, int nobjects,const std::vector<std::vector<float>>& Interactions,double Evalence_);
     ~BOX();
 
     void create_new_DHH1(const std::tuple<int, int, int>& site, int object_idx);

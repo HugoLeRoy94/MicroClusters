@@ -34,8 +34,7 @@ int RNA::Index() const { return 2; }
 float RNA::compute_local_energy(const BOX& box) const {
     // Implement the local energy calculation for RNA objects
     auto neighbors = box.get_neighbors(position);
-    float local_energy = 0.0f;
-
+    float local_energy = 0.0f;    
     for (const auto& nxyz : neighbors) {
         Object* neighbor_obj = box.get_lattice(nxyz);
         local_energy -= box.E[Index()][neighbor_obj->Index()];
@@ -67,11 +66,15 @@ float DHH1::compute_local_energy(const BOX& box) const {
     // Implement the local energy calculation for DHH1 objects
     auto neighbors = box.get_neighbors(position);
     float local_energy = 0.0f;
-
+    int neigh_count(0);
     for (const auto& nxyz : neighbors) {
         Object* neighbor_obj = box.get_lattice(nxyz);
         local_energy -= box.E[Index()][neighbor_obj->Index()];
+        if(!neighbor_obj->isempty()){
+            neigh_count+=1;
+        }        
     }
+    if(neigh_count>0){local_energy-=box.Evalence;}
 
     return local_energy;
 }

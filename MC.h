@@ -16,7 +16,7 @@ public:
 
     BOX box;
 
-    MC(int size, int nparticles_, int npolymers_, int lpolymer_, const std::vector<std::vector<float>>& interactions, float temperature);
+    MC(int size, int nparticles_, int npolymers_, int lpolymer_, const std::vector<std::vector<float>>& interactions,double Evalence_, float temperature);
 
     void generate_polymers(int npolymers, int lpolymer);
     bool add_random_poly(int lpolymer);

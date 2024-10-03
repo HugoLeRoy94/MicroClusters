@@ -51,8 +51,8 @@ std::vector<std::array<int, 3>> generate_unique_triplets(int N, int L) {
     return triplets;
 }
 
-BOX::BOX(int size_, int nobjects, const std::vector<std::vector<float>>& Interactions)
-    : size(size_), E(Interactions){
+BOX::BOX(int size_, int nobjects, const std::vector<std::vector<float>>& Interactions,double Evalence_)
+    : size(size_), E(Interactions), Evalence(Evalence_){
     int total_sites = size * size * size;
     lattice.resize(total_sites);
 
@@ -116,15 +116,8 @@ float BOX::compute_local_energy(const std::tuple<int, int, int>& xyz) const {
     if (obj->isempty()) {
         return 0.0f;
     }
-    auto neighbors = get_neighbors(xyz);
-    float local_energy = 0.0f;
 
-    for (const auto& nxyz : neighbors) {
-        Object* neighbor_obj = get_lattice(nxyz);
-        local_energy -= E[obj->Index()][neighbor_obj->Index()];
-    }
-
-    return local_energy;
+    return obj->compute_local_energy(*this);
 }
 
 float BOX::total_energy() const {
@@ -250,14 +243,15 @@ std::vector<int> BOX::cluster_size() {
         build_clusters();
     }
     // Append length of cluster_indices to cluster_starts to mark the end
-    cluster_starts.push_back(cluster_indices.size());
+    //cluster_starts.push_back(cluster_indices.size());
     // Compute sizes as differences between consecutive cluster_starts
     std::vector<int> sizes;
-    sizes.reserve(cluster_starts.size() - 1);
+    sizes.reserve(cluster_starts.size()-1);
     for (size_t i = 0; i < cluster_starts.size() - 1; ++i) {
         int size = cluster_starts[i + 1] - cluster_starts[i];
         sizes.push_back(size);
     }
+    sizes.push_back(cluster_indices.size()-cluster_starts.back());
     return sizes;
 }
 double BOX::average_cluster_size() {

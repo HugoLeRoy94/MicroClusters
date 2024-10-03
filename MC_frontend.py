@@ -5,7 +5,7 @@ import os
 import sys
 
 class MC:
-    def __init__(self, size, nparticles, npolymers, lpolymer, interactions, temperature):
+    def __init__(self, size, nparticles, npolymers, lpolymer, interactions,Evalence, temperature):
         # Load the shared library
         if sys.platform.startswith('win'):
             lib_name = 'mc.dll'
@@ -25,6 +25,7 @@ class MC:
             ctypes.c_int,  # lpolymer
             ctypes.POINTER(ctypes.c_float),  # interactions_flat
             ctypes.c_int,  # interactions_size
+            ctypes.c_double, # limited valence interaction
             ctypes.c_float  # temperature
         ]
         self.lib.MC_new.restype = ctypes.c_void_p  # Return a pointer to MC
@@ -85,6 +86,7 @@ class MC:
             lpolymer,
             interactions_flat_p,
             n,
+            Evalence,
             temperature
         )
 
@@ -117,7 +119,9 @@ class MC:
         if size < 0:
             raise ValueError("Error getting cluster indices size")
         return size
-
+    def get_cluster_size(self):
+        indices_array,starts_array = self.get_clusters()
+        return np.diff(starts_array)
     def get_cluster_starts_size(self):
         size = self.lib.MC_get_cluster_starts_size(self.Address)
         if size < 0:
@@ -151,6 +155,4 @@ class MC:
             raise ValueError("Error filling cluster starts")
 
         return indices_array, starts_array
-    def average_cluster_size(self):
-        return self.lib.MC_average_cluster_size(self.Address)
     
