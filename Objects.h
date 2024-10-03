@@ -22,6 +22,7 @@ protected:
     Object(const Object&) = delete;
     Object& operator=(const Object&) = delete;
 
+
 public:
     const std::tuple<int, int, int>& getPosition() const;
     void setPosition(const std::tuple<int, int, int>& value);
@@ -30,6 +31,8 @@ public:
 
     virtual bool isempty() const;
     virtual int Index() const;
+
+    virtual float compute_local_energy(const BOX& box) const = 0;
 };
 
 class Empty : public Object {
@@ -41,6 +44,7 @@ protected:
 public:
     virtual bool isempty() const override;
     virtual int Index() const override;
+    virtual float compute_local_energy(const BOX& box) const override;
 };
 
 class RNA : public Object {
@@ -51,6 +55,7 @@ protected:
 
 public:
     virtual int Index() const override;
+    virtual float compute_local_energy(const BOX& box) const override;
 };
 
 class DHH1 : public Object {
@@ -62,6 +67,7 @@ protected:
 public:
     virtual int Index() const override;
     virtual std::tuple<int, int, int> get_site_to_exchange(const BOX& box) const override;
+    virtual float compute_local_energy(const BOX& box) const override;
 };
 
 #endif // OBJECTS_H

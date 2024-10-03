@@ -18,6 +18,11 @@ Empty::Empty(const std::tuple<int, int, int>& position_) : Object(position_) {}
 Empty::~Empty() {}
 bool Empty::isempty() const { return true; }
 int Empty::Index() const { return 0; }
+float Empty::compute_local_energy(const BOX& box) const {
+    // Empty objects have zero energy
+    return 0.0f;
+}
+
 
 // RNA Class Implementation
 RNA::RNA(int length, const std::vector<int>& x, const std::vector<int>& y, const std::vector<int>& z)
@@ -26,6 +31,18 @@ RNA::RNA(int length, const std::vector<int>& x, const std::vector<int>& y, const
 }
 RNA::~RNA() {}
 int RNA::Index() const { return 2; }
+float RNA::compute_local_energy(const BOX& box) const {
+    // Implement the local energy calculation for RNA objects
+    auto neighbors = box.get_neighbors(position);
+    float local_energy = 0.0f;
+
+    for (const auto& nxyz : neighbors) {
+        Object* neighbor_obj = box.get_lattice(nxyz);
+        local_energy -= box.E[Index()][neighbor_obj->Index()];
+    }
+
+    return local_energy;
+}
 
 
 // DHH1 Class Implementation
@@ -45,4 +62,16 @@ std::tuple<int, int, int> DHH1::get_site_to_exchange(const BOX& box) const {
     } while (std::make_tuple(x, y, z) == position);
 
     return std::make_tuple(x, y, z);
+}
+float DHH1::compute_local_energy(const BOX& box) const {
+    // Implement the local energy calculation for DHH1 objects
+    auto neighbors = box.get_neighbors(position);
+    float local_energy = 0.0f;
+
+    for (const auto& nxyz : neighbors) {
+        Object* neighbor_obj = box.get_lattice(nxyz);
+        local_energy -= box.E[Index()][neighbor_obj->Index()];
+    }
+
+    return local_energy;
 }

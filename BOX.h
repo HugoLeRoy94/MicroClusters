@@ -25,14 +25,29 @@ public:
     bool has_free_neighbor(const std::tuple<int, int, int>& xyz) const;
 
     // Additional methods
-    std::tuple<std::vector<int>, std::vector<int>> build_clusters();
+    // Function to build clusters and update member variables
+    void build_clusters();
+
+    // Getters for cluster data
+    const std::vector<int>& get_cluster_indices();
+    const std::vector<int>& get_cluster_starts();
+
+    size_t get_cluster_indices_size();
+    size_t get_cluster_starts_size();
+
     std::vector<int> cluster_size();
-    int compute_av_Nneigh() const;
+    double average_cluster_size();
+    double compute_av_Nneigh() const;
 private:
     int npolymers;
     // Disallow copying
     BOX(const BOX&) = delete;
     BOX& operator=(const BOX&) = delete;
+
+    // Cluster data
+    std::vector<int> cluster_indices;
+    std::vector<int> cluster_starts;
+    bool clusters_valid = false;
 };
 
 int to_single_index(int x, int y, int z, int L);

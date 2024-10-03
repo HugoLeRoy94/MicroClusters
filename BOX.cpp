@@ -7,6 +7,10 @@
 #include <iostream>
 #include <unordered_set>
 #include <cmath>
+#include <functional>
+#include <stack>
+#include <numeric>
+#include <vector>
 
 int to_single_index(int x, int y, int z, int L) {
     return x * L * L + y * L + z;
@@ -95,6 +99,8 @@ void BOX::swap(const std::tuple<int, int, int>& site1, const std::tuple<int, int
     // Update the positions of the objects
     lattice[idx1]->setPosition(site1);
     lattice[idx2]->setPosition(site2);
+
+    clusters_valid = false; // Invalidate cluster data
 }
 
 Object* BOX::get_lattice(const std::tuple<int, int, int>& site) const {
@@ -128,7 +134,7 @@ float BOX::total_energy() const {
             for (int z = 0; z < size; ++z) {
                 Object* obj = get_lattice(std::make_tuple(x, y, z));
                 if (!obj->isempty()) {
-                    energy += compute_local_energy(std::make_tuple(x, y, z));
+                    energy += obj->compute_local_energy(*this);
                 }
             }
         }
@@ -171,39 +177,147 @@ bool BOX::has_free_neighbor(const std::tuple<int, int, int>& xyz) const {
 
 // Placeholder implementations for build_clusters, cluster_size, and compute_av_Nneigh
 
-std::tuple<std::vector<int>, std::vector<int>> BOX::build_clusters() {
-    // Implement cluster building algorithm
-    return std::make_tuple(std::vector<int>(), std::vector<int>());
-}
 
+
+void BOX::build_clusters() {
+    int total_sites = size * size * size;
+    std::vector<bool> visited(total_sites, false);
+
+    cluster_indices.clear();
+    cluster_indices.reserve(total_sites);
+
+    cluster_starts.clear();
+    cluster_starts.reserve(total_sites);
+
+    int current_index = 0;
+
+    // Define the flood_fill function
+    std::function<void(int)> flood_fill = [&](int start_index) {
+        std::stack<int> stack;
+        stack.push(start_index);
+        int cluster_start = current_index;
+
+        while (!stack.empty()) {
+            int current_idx = stack.top();
+            stack.pop();
+            if (!visited[current_idx]) {
+                visited[current_idx] = true;
+                cluster_indices.push_back(current_idx);
+                current_index++;
+                int x, y, z;
+                std::tie(x, y, z) = to_xyz(current_idx, size);
+                auto neighbors = get_neighbors(std::make_tuple(x, y, z));
+                for (const auto& neighbor : neighbors) {
+                    int nx = std::get<0>(neighbor);
+                    int ny = std::get<1>(neighbor);
+                    int nz = std::get<2>(neighbor);
+                    int neighbor_idx = to_single_index(nx, ny, nz, size);
+                    if (!visited[neighbor_idx]) {
+                        Object* neighbor_obj = get_lattice(neighbor);
+                        if (!neighbor_obj->isempty()) {
+                            stack.push(neighbor_idx);
+                        }
+                    }
+                }
+            }
+        }
+        if (current_index > cluster_start) {
+            cluster_starts.push_back(cluster_start);
+        }
+    };
+
+    // Iterate over all lattice sites
+    for (int x = 0; x < size; ++x) {
+        for (int y = 0; y < size; ++y) {
+            for (int z = 0; z < size; ++z) {
+                int idx = to_single_index(x, y, z, size);
+                if (!visited[idx]) {
+                    Object* obj = get_lattice(std::make_tuple(x, y, z));
+                    if (!obj->isempty()) {
+                        // Start a new cluster
+                        flood_fill(idx);
+                    } else {
+                        visited[idx] = true;
+                    }
+                }
+            }
+        }
+    }
+    clusters_valid = true; // Mark clusters as valid
+}
 std::vector<int> BOX::cluster_size() {
-    auto [cluster_indices, cluster_starts] = build_clusters();
+    if (!clusters_valid) {
+        build_clusters();
+    }
+    // Append length of cluster_indices to cluster_starts to mark the end
+    cluster_starts.push_back(cluster_indices.size());
+    // Compute sizes as differences between consecutive cluster_starts
     std::vector<int> sizes;
-    // Compute sizes based on cluster_starts and cluster_indices
+    sizes.reserve(cluster_starts.size() - 1);
+    for (size_t i = 0; i < cluster_starts.size() - 1; ++i) {
+        int size = cluster_starts[i + 1] - cluster_starts[i];
+        sizes.push_back(size);
+    }
     return sizes;
 }
+double BOX::average_cluster_size() {
+    std::vector<int> sizes = cluster_size();
+    if (sizes.empty()) {
+        return 0.0;
+    }
+    double total_size = std::accumulate(sizes.begin(), sizes.end(), 0.0);
+    return total_size / sizes.size();
+}
+double BOX::compute_av_Nneigh() const {
+    double total_neighbors = 0.0;
+    int occupied_sites = 0;
 
-int BOX::compute_av_Nneigh() const {
-    int av_Nneigh = 0;
-    int true_sites = 0;
     for (int x = 0; x < size; ++x) {
         for (int y = 0; y < size; ++y) {
             for (int z = 0; z < size; ++z) {
                 Object* obj = get_lattice(std::make_tuple(x, y, z));
                 if (!obj->isempty()) {
-                    int counter = 0;
+                    int neighbor_count = 0;
                     auto neighbors = get_neighbors(std::make_tuple(x, y, z));
                     for (const auto& neighbor : neighbors) {
                         Object* neighbor_obj = get_lattice(neighbor);
                         if (!neighbor_obj->isempty()) {
-                            ++counter;
+                            ++neighbor_count;
                         }
                     }
-                    av_Nneigh += counter;
-                    ++true_sites;
+                    total_neighbors += neighbor_count;
+                    ++occupied_sites;
                 }
             }
         }
     }
-    return true_sites > 0 ? av_Nneigh / true_sites : 0;
+
+    return occupied_sites > 0 ? total_neighbors / occupied_sites : 0.0;
+}
+const std::vector<int>& BOX::get_cluster_indices() {
+    if (!clusters_valid) {
+        build_clusters();
+    }
+    return cluster_indices;
+}
+
+const std::vector<int>& BOX::get_cluster_starts() {
+    if (!clusters_valid) {
+        build_clusters();
+    }
+    return cluster_starts;
+}
+
+size_t BOX::get_cluster_indices_size() {
+    if (!clusters_valid) {
+        build_clusters();
+    }
+    return cluster_indices.size();
+}
+
+size_t BOX::get_cluster_starts_size() {
+    if (!clusters_valid) {
+        build_clusters();
+    }
+    return cluster_starts.size();
 }
