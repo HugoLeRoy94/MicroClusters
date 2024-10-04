@@ -5,8 +5,8 @@
 int main() {
     int size = 100;
     int nparticles = 100;
-    int npolymers = 0;
-    int lpolymer = 0;
+    int npolymers = 1;
+    int lpolymer = 10;
     float temperature = 0.1f;
     double Evalence=2.5;
 
@@ -18,11 +18,11 @@ int main() {
     };
 
     MC simulation(size, nparticles, npolymers, lpolymer, interactions,Evalence, temperature);
-    for (int i=0;i<10;i++){
-    std::cout<<i<<std::endl;
-    simulation.monte_carlo_steps(pow(10,5));
-
-    }
+    //for (int i=0;i<10;i++){
+    //std::cout<<i<<std::endl;
+    //simulation.monte_carlo_steps(pow(10,5));
+//
+    //}
     // Compute cluster sizes
     //std::vector<int> cluster_sizes = simulation.box.cluster_size();
     //std::cout << "Cluster sizes:\n";

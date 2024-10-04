@@ -90,15 +90,16 @@ BOX::~BOX() {
     }
 }
 
-void BOX::create_new_DHH1(const std::tuple<int,int,int>& site, int object_idx){
+void BOX::create_new_DHH1(const std::tuple<int,int,int>& site){
     DHH1* new_dhh1 = new DHH1(site);
     int idx = to_single_index(std::get<0>(site), std::get<1>(site), std::get<2>(site), size);
     delete lattice[idx];
     lattice[idx] = new_dhh1;
-    objects[object_idx] = new_dhh1;
+    objects.push_back(new_dhh1);
     new_dhh1->setPosition(site);
 }
-RNA* BOX::add_RNA(int length, const std::tuple<int, int, int>& start_position) {
+RNA* BOX::add_RNA(int length) {
+    std::tuple<int,int,int> start_position(random_free_site());
     // Initialize data structures
     std::vector<std::tuple<int, int, int>> monomers;
     monomers.reserve(length);
@@ -110,9 +111,10 @@ RNA* BOX::add_RNA(int length, const std::tuple<int, int, int>& start_position) {
     // Check if the starting position is empty
     if (!get_lattice(start_position)->isempty()) {
         throw std::runtime_error("Starting position is already occupied");
-    }    
+    }
+    
 
-    // Initialize RNG
+    // Initialize RNG   
     static std::mt19937 rng(std::random_device{}());
 
     // Build the polymer
@@ -133,7 +135,7 @@ RNA* BOX::add_RNA(int length, const std::tuple<int, int, int>& start_position) {
         if (!found) {
             // Dead end encountered; clean up and throw an exception or return nullptr
             for (const auto& monomer_pos : monomers) {
-                lattice[std::get<0>(monomer_pos),std::get<1>(monomer_pos),std::get<2>(monomer_pos)]= new Empty(monomer_pos);                
+                lattice[to_single_index(std::get<0>(monomer_pos),std::get<1>(monomer_pos),std::get<2>(monomer_pos),size)]= new Empty(monomer_pos);
             }
             throw std::runtime_error("Unable to place RNA polymer due to dead end");
         }
@@ -146,8 +148,8 @@ RNA* BOX::add_RNA(int length, const std::tuple<int, int, int>& start_position) {
 
     // Update the lattice with the RNA object
     for (const auto& monomer_pos : monomers) {
-        delete lattice[std::get<0>(monomer_pos),std::get<1>(monomer_pos),std::get<2>(monomer_pos)];
-        lattice[std::get<0>(monomer_pos),std::get<1>(monomer_pos),std::get<2>(monomer_pos)]=rna;
+        delete lattice[to_single_index(std::get<0>(monomer_pos),std::get<1>(monomer_pos),std::get<2>(monomer_pos),size)];
+        lattice[to_single_index(std::get<0>(monomer_pos),std::get<1>(monomer_pos),std::get<2>(monomer_pos),size)]=rna;
     }
 
     return rna;
@@ -379,4 +381,12 @@ size_t BOX::get_cluster_starts_size() {
         build_clusters();
     }
     return cluster_starts.size();
+}
+std::tuple<int,int,int> BOX::random_free_site(){
+    static std::mt19937 rng(std::random_device{}());
+    while(true){
+        std::uniform_int_distribution<int> dist(0, lattice.size() - 1);
+        int idx = dist(rng);
+        if(lattice[idx]->isempty()){return to_xyz(idx,size);}
+    }
 }

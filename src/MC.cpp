@@ -2,20 +2,31 @@
 #include "MC.h"
 #include <random>
 #include <algorithm>
+#include <stdexcept>
+#include <iostream>
 
 MC::MC(int size, int nparticles_, int npolymers_, int lpolymer_, const std::vector<std::vector<float>>& interactions,double Evalence_, float temperature)
     : nparticles(nparticles_), npolymers(npolymers_), lpolymer(lpolymer_), E(interactions), T(temperature), box(size, nparticles_ + npolymers_, interactions,Evalence_) {
     generate_polymers(npolymers, lpolymer);
+    std::cout<<"polymer successfully generated"<<std::endl;
     generate_particles(nparticles);
+    std::cout<<"particles successfully added"<<std::endl;
 }
 
 void MC::generate_polymers(int npolymers, int lpolymer) {
-    //int npoly = 0;
-    //while (npoly < npolymers) {
-    //    if (add_random_poly(lpolymer)) {
-    //        ++npoly;
-    //    }
-    //}
+    int npoly = 0;
+    int counter(0);    
+    while (npoly < npolymers) {
+        counter++;
+        try{
+            box.add_RNA(lpolymer);
+            ++npoly;
+        }
+        catch(std::exception& e){}
+        if(counter>pow(box.size,3)){
+            throw std::runtime_error("cannot find a place to place a polymer");
+        }
+    }
     return;
 }
 
@@ -33,7 +44,7 @@ void MC::generate_particles(int nparticles) {
         int y = particles[idx][1];
         int z = particles[idx][2];
 
-        box.create_new_DHH1(std::make_tuple(x, y, z),npolymers+idx);
+        box.create_new_DHH1(std::make_tuple(x, y, z));
         //DHH1* new_dhh1 = new DHH1(std::make_tuple(x, y, z));
         //box.set_lattice(std::make_tuple(x, y, z), new_dhh1);
         //box.objects[npolymers + idx] = new_dhh1;  // Polymers must be generated first        
@@ -47,7 +58,7 @@ bool MC::monte_carlo_step() {
     std::uniform_int_distribution<int> dist(0, box.objects.size() - 1);
 
     int idx = dist(rng);
-    Object* object1 = box.objects[idx];    
+    Object* object1 = box.objects[idx];
 
     std::tuple<int, int, int> site1 = object1->getPosition();
     std::tuple<int, int, int> site2 = object1->get_site_to_exchange(box);
