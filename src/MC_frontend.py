@@ -72,6 +72,9 @@ class MC:
         self.lib.MC_average_cluster_size.argtypes = [ctypes.c_void_p]
         self.lib.MC_average_cluster_size.restype=ctypes.c_double
 
+        self.lib.MC_get_energy.argtypes = [ctypes.c_void_p]
+        self.lib.MC_get_energy.restype = ctypes.c_double
+
         # Flatten the interactions matrix
         interactions = np.array(interactions, dtype=np.float32)
         n = interactions.shape[0]
@@ -121,6 +124,7 @@ class MC:
         return size
     def get_cluster_size(self):
         indices_array,starts_array = self.get_clusters()
+        starts_array = np.append(starts_array,indices_array.shape[0])
         return np.diff(starts_array)
     def get_cluster_starts_size(self):
         size = self.lib.MC_get_cluster_starts_size(self.Address)
@@ -155,4 +159,5 @@ class MC:
             raise ValueError("Error filling cluster starts")
 
         return indices_array, starts_array
-    
+    def get_energy(self):
+        return self.lib.MC_get_energy(self.Address)

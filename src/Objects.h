@@ -4,6 +4,7 @@
 
 #include <tuple>
 #include <vector>
+#include <algorithm>  // for std::shuffle
 #include <random>
 
 // Forward declaration of BOX class
@@ -50,8 +51,11 @@ public:
 class RNA : public Object {
     friend class BOX;  // Declare BOX as a friend class
 protected:
-    RNA(int length, const std::vector<int>& x, const std::vector<int>& y, const std::vector<int>& z);
+    RNA(std::vector<std::tuple<int,int,int>>& monomers_);
     virtual ~RNA();
+    bool isconnected() const;
+
+    std::vector<std::tuple<int,int,int>> monomers;
 
 public:
     virtual int Index() const override;

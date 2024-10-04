@@ -1,2 +1,5 @@
-*/
 *.nb
+*.pyc
+callgrind*
+*.d
+*.o

@@ -12,6 +12,15 @@
 #include <numeric>
 #include <vector>
 
+struct TupleHash {
+    std::size_t operator()(const std::tuple<int, int, int>& t) const {
+        auto h1 = std::hash<int>{}(std::get<0>(t));
+        auto h2 = std::hash<int>{}(std::get<1>(t));
+        auto h3 = std::hash<int>{}(std::get<2>(t));
+        return h1 ^ (h2 << 1) ^ (h3 << 2);
+    }
+};
+
 int to_single_index(int x, int y, int z, int L) {
     return x * L * L + y * L + z;
 }
@@ -89,7 +98,60 @@ void BOX::create_new_DHH1(const std::tuple<int,int,int>& site, int object_idx){
     objects[object_idx] = new_dhh1;
     new_dhh1->setPosition(site);
 }
+RNA* BOX::add_RNA(int length, const std::tuple<int, int, int>& start_position) {
+    // Initialize data structures
+    std::vector<std::tuple<int, int, int>> monomers;
+    monomers.reserve(length);
+    monomers.push_back(start_position);
 
+    std::unordered_set<std::tuple<int, int, int>, TupleHash> monomer_set;
+    monomer_set.insert(start_position);
+
+    // Check if the starting position is empty
+    if (!get_lattice(start_position)->isempty()) {
+        throw std::runtime_error("Starting position is already occupied");
+    }    
+
+    // Initialize RNG
+    static std::mt19937 rng(std::random_device{}());
+
+    // Build the polymer
+    for (int i = 1; i < length; ++i) {
+        std::vector<std::tuple<int, int, int>> neighbors = get_neighbors(monomers[i - 1]);
+        std::shuffle(neighbors.begin(), neighbors.end(), rng);
+
+        bool found = false;
+        for (const auto& neighbor : neighbors) {
+            if (get_lattice(neighbor)->isempty() && monomer_set.find(neighbor) == monomer_set.end()) {
+                monomers.push_back(neighbor);
+                monomer_set.insert(neighbor);
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            // Dead end encountered; clean up and throw an exception or return nullptr
+            for (const auto& monomer_pos : monomers) {
+                lattice[std::get<0>(monomer_pos),std::get<1>(monomer_pos),std::get<2>(monomer_pos)]= new Empty(monomer_pos);                
+            }
+            throw std::runtime_error("Unable to place RNA polymer due to dead end");
+        }
+    }
+
+    // At this point, the monomer positions are determined
+    // Now, create the RNA object
+    RNA* rna = new RNA(monomers);
+    objects.push_back(rna);
+
+    // Update the lattice with the RNA object
+    for (const auto& monomer_pos : monomers) {
+        delete lattice[std::get<0>(monomer_pos),std::get<1>(monomer_pos),std::get<2>(monomer_pos)];
+        lattice[std::get<0>(monomer_pos),std::get<1>(monomer_pos),std::get<2>(monomer_pos)]=rna;
+    }
+
+    return rna;
+}
 void BOX::swap(const std::tuple<int, int, int>& site1, const std::tuple<int, int, int>& site2) {
     int idx1 = to_single_index(std::get<0>(site1), std::get<1>(site1), std::get<2>(site1), size);
     int idx2 = to_single_index(std::get<0>(site2), std::get<1>(site2), std::get<2>(site2), size);
@@ -141,6 +203,7 @@ std::vector<std::tuple<int, int, int>> BOX::get_neighbors(const std::tuple<int, 
     int z = std::get<2>(xyz);
 
     std::vector<std::tuple<int, int, int>> neighbors;
+    neighbors.reserve(26);
     for (int dx = -1; dx <=1; ++dx) {
         for (int dy = -1; dy <=1; ++dy) {
             for (int dz = -1; dz <=1; ++dz) {
@@ -169,8 +232,6 @@ bool BOX::has_free_neighbor(const std::tuple<int, int, int>& xyz) const {
 }
 
 // Placeholder implementations for build_clusters, cluster_size, and compute_av_Nneigh
-
-
 
 void BOX::build_clusters() {
     int total_sites = size * size * size;
@@ -238,6 +299,7 @@ void BOX::build_clusters() {
     }
     clusters_valid = true; // Mark clusters as valid
 }
+
 std::vector<int> BOX::cluster_size() {
     if (!clusters_valid) {
         build_clusters();
@@ -254,6 +316,7 @@ std::vector<int> BOX::cluster_size() {
     sizes.push_back(cluster_indices.size()-cluster_starts.back());
     return sizes;
 }
+
 double BOX::average_cluster_size() {
     std::vector<int> sizes = cluster_size();
     if (sizes.empty()) {
@@ -262,6 +325,7 @@ double BOX::average_cluster_size() {
     double total_size = std::accumulate(sizes.begin(), sizes.end(), 0.0);
     return total_size / sizes.size();
 }
+
 double BOX::compute_av_Nneigh() const {
     double total_neighbors = 0.0;
     int occupied_sites = 0;
@@ -288,6 +352,7 @@ double BOX::compute_av_Nneigh() const {
 
     return occupied_sites > 0 ? total_neighbors / occupied_sites : 0.0;
 }
+
 const std::vector<int>& BOX::get_cluster_indices() {
     if (!clusters_valid) {
         build_clusters();

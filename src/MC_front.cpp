@@ -92,4 +92,8 @@ int MC_fill_cluster_starts(MC* mc, int* starts_array, int array_length) {
     std::copy(starts.begin(), starts.end(), starts_array);
     return size; // Number of elements filled
 }
+double MC_get_energy(MC* mc){
+    if(!mc){return -1;}
+    return mc->get_energy();
+}
 }

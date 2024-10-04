@@ -79,19 +79,20 @@ class BOX:
     
     def add_random_poly(self,lpolymer:int)-> bool:
         # place the first seed in a random lattice
-            while True:
-                x,y,z = np.random.randint(self.lattice.shape[0]),np.random.randint(self.lattice.shape[1]),np.random.randint(self.lattice.shape[2])
-                if self.lattice[x,y,z]==0 and self.has_free_neighbor(x,y,z):
-                    break
-            lpoly = 0
-            while lpoly < lpolymer:
-                while True:
-                    nxyz = self.get_neighbors(x,y,z)
-                    nx,ny,nz = nxyz[0],nxyz[1],nxyz[2]
-                    if self.lattice[nx,ny,nz]==0 and  
-
-                x,y,z=nx,ny,nz
-                lpoly+=1
+        return
+             #while True:
+             #    x,y,z = np.random.randint(self.lattice.shape[0]),np.random.randint(self.lattice.shape[1]),np.random.randint(self.lattice.shape[2])
+             #    if self.lattice[x,y,z]==0 and self.has_free_neighbor(x,y,z):
+             #        break
+             #lpoly = 0
+             #while lpoly < lpolymer:
+             #    while True:
+             #        nxyz = self.get_neighbors(x,y,z)
+             #        nx,ny,nz = nxyz[0],nxyz[1],nxyz[2]
+             #        if self.lattice[nx,ny,nz]==0 and  
+ #
+             #    x,y,z=nx,ny,nz
+             #    lpoly+=1
 
     def generate_polymers(self, npolymers: int,lpolymer:int)->None:
         """
@@ -199,6 +200,7 @@ class BOX:
         success = np.zeros(steps,dtype = np.bool_)
         for step in range(steps):
             success[step] = self.monte_carlo_step()
+        return success
     def build_clusters(self) -> Tuple[NDArray[np.int_], NDArray[np.int_]]:
         """
         Computes the distribution of cluster sizes in the lattice.

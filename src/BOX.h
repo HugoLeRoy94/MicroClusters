@@ -17,7 +17,8 @@ public:
     BOX(int size_, int nobjects,const std::vector<std::vector<float>>& Interactions,double Evalence_);
     ~BOX();
 
-    void create_new_DHH1(const std::tuple<int, int, int>& site, int object_idx);
+    void create_new_DHH1(const std::tuple<int, int, int>& site,int object_idx);
+    RNA* add_RNA(int length, const std::tuple<int, int, int>& start_position);
     Object* get_lattice(const std::tuple<int, int, int>& site) const;
     void swap(const std::tuple<int, int, int>& site1, const std::tuple<int, int, int>& site2);
     float compute_local_energy(const std::tuple<int, int, int>& xyz) const;

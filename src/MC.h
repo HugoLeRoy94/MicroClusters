@@ -23,6 +23,7 @@ public:
     void generate_particles(int nparticles);
     bool monte_carlo_step();
     std::vector<bool> monte_carlo_steps(int steps);
+    double get_energy()const;
 };
 
 #endif // MC_H

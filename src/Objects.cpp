@@ -2,6 +2,8 @@
 #include "Objects.h"
 #include "BOX.h"
 #include <random>
+#include <stdexcept>
+
 
 // Object Class Implementation
 Object::Object(const std::tuple<int, int, int>& position_) : position(position_) {}
@@ -25,12 +27,16 @@ float Empty::compute_local_energy(const BOX& box) const {
 
 
 // RNA Class Implementation
-RNA::RNA(int length, const std::vector<int>& x, const std::vector<int>& y, const std::vector<int>& z)
-    : Object(std::make_tuple(0, 0, 0)) {
-    // Implement RNA initialization
+RNA::RNA(std::vector<std::tuple<int,int,int>>& monomers_)
+    : Object(monomers_[0]) {
+
 }
+
 RNA::~RNA() {}
 int RNA::Index() const { return 2; }
+bool RNA::isconnected() const{
+
+}
 float RNA::compute_local_energy(const BOX& box) const {
     // Implement the local energy calculation for RNA objects
     auto neighbors = box.get_neighbors(position);

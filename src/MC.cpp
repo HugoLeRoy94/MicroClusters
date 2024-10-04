@@ -51,8 +51,8 @@ bool MC::monte_carlo_step() {
 
     std::tuple<int, int, int> site1 = object1->getPosition();
     std::tuple<int, int, int> site2 = object1->get_site_to_exchange(box);
-
     Object* object2 = box.get_lattice(site2);
+    //Object* object2 = object1->get_object_to_exchange(box);
 
     // Compute energy before the move
     float initial_energy = box.compute_local_energy(site1) + box.compute_local_energy(site2);
@@ -82,4 +82,8 @@ std::vector<bool> MC::monte_carlo_steps(int steps) {
         success[step] = monte_carlo_step();
     }
     return success;
+}
+
+double MC::get_energy()const{
+    return box.total_energy();
 }
