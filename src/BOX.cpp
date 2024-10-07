@@ -98,6 +98,7 @@ void BOX::create_new_DHH1(const std::tuple<int,int,int>& site){
     objects.push_back(new_dhh1);
     new_dhh1->setPosition(site);
 }
+
 RNA* BOX::add_RNA(int length) {
     std::tuple<int,int,int> start_position(random_free_site());
     // Initialize data structures
@@ -154,6 +155,7 @@ RNA* BOX::add_RNA(int length) {
 
     return rna;
 }
+
 void BOX::swap(const std::tuple<int, int, int>& site1, const std::tuple<int, int, int>& site2) {
     int idx1 = to_single_index(std::get<0>(site1), std::get<1>(site1), std::get<2>(site1), size);
     int idx2 = to_single_index(std::get<0>(site2), std::get<1>(site2), std::get<2>(site2), size);
@@ -382,6 +384,7 @@ size_t BOX::get_cluster_starts_size() {
     }
     return cluster_starts.size();
 }
+
 std::tuple<int,int,int> BOX::random_free_site(){
     static std::mt19937 rng(std::random_device{}());
     while(true){

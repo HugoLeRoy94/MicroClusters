@@ -4,6 +4,7 @@
 
 #include "BOX.h"
 #include "Objects.h"
+#include "Move.h"
 #include <vector>
 
 class MC {

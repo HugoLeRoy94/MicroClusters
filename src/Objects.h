@@ -26,7 +26,8 @@ protected:
 
 public:
     const std::tuple<int, int, int>& getPosition() const;
-    void setPosition(const std::tuple<int, int, int>& value);
+    virtual std::vector<std::tuple<int, int, int>> get_positions() const;
+    virtual void setPosition(const std::tuple<int, int, int>& value);
 
     virtual std::tuple<int, int, int> get_site_to_exchange(const BOX& box) const;
 
@@ -50,16 +51,22 @@ public:
 
 class RNA : public Object {
     friend class BOX;  // Declare BOX as a friend class
+    friend class Move;
 protected:
     RNA(std::vector<std::tuple<int,int,int>>& monomers_);
     virtual ~RNA();
-    bool isconnected() const;
-
+    bool isconnected(int idx, const BOX& box) const;
+    bool would_be_connected_after_move(int idx, const std::tuple<int, int, int>& new_pos) const;
+    virtual std::tuple<int, int, int> get_site_to_exchange(const BOX& box) const override;
     std::vector<std::tuple<int,int,int>> monomers;
+    int get_monomer_index(const std::tuple<int, int, int>& position) const;
 
 public:
     virtual int Index() const override;
     virtual float compute_local_energy(const BOX& box) const override;
+    virtual void setPosition(const std::tuple<int, int, int>& value) override;
+    virtual std::vector<std::tuple<int, int, int>> RNA::get_positions() const override;
+
 };
 
 class DHH1 : public Object {
@@ -73,5 +80,8 @@ public:
     virtual std::tuple<int, int, int> get_site_to_exchange(const BOX& box) const override;
     virtual float compute_local_energy(const BOX& box) const override;
 };
+
+double distance(std::tuple<int,int,int> site1, std::tuple<int,int,int> site2);
+int chebyshev_distance(const std::tuple<int, int, int>& pos1, const std::tuple<int, int, int>& pos2);
 
 #endif // OBJECTS_H

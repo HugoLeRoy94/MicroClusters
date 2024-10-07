@@ -13,6 +13,7 @@ public:
     std::vector<Object*> objects;
     std::vector<std::vector<float>> E;  // Interaction matrix
     double Evalence;
+    bool clusters_valid = false;
 
     BOX(int size_, int nobjects,const std::vector<std::vector<float>>& Interactions,double Evalence_);
     ~BOX();
@@ -48,8 +49,7 @@ private:
 
     // Cluster data
     std::vector<int> cluster_indices;
-    std::vector<int> cluster_starts;
-    bool clusters_valid = false;
+    std::vector<int> cluster_starts;    
 
     std::tuple<int,int,int> random_free_site();
 };

@@ -52,40 +52,75 @@ void MC::generate_particles(int nparticles) {
 }
 
 bool MC::monte_carlo_step() {
-    // Perform a single Monte Carlo step using the Metropolis algorithm with site exchange
-
     static std::mt19937 rng(std::random_device{}());
-    std::uniform_int_distribution<int> dist(0, box.objects.size() - 1);
 
-    int idx = dist(rng);
-    Object* object1 = box.objects[idx];
-
-    std::tuple<int, int, int> site1 = object1->getPosition();
-    std::tuple<int, int, int> site2 = object1->get_site_to_exchange(box);
-    Object* object2 = box.get_lattice(site2);
-    //Object* object2 = object1->get_object_to_exchange(box);
-
-    // Compute energy before the move
-    float initial_energy = box.compute_local_energy(site1) + box.compute_local_energy(site2);
-
-    // Swap the particles
-    box.swap(site1, site2);
-
-    // Compute energy after the move
-    float final_energy = box.compute_local_energy(site1) + box.compute_local_energy(site2);
-
-    // Calculate energy difference
-    float delta_e = final_energy - initial_energy;
-
-    // Decide whether to accept the move
-    std::uniform_real_distribution<float> rand_dist(0.0f, 1.0f);
-    if (delta_e > 0 && rand_dist(rng) >= std::exp(-delta_e / T)) {
-        // Reject the move (revert)
-        box.swap(site1, site2);
-        return false;  // Move was rejected
+    // Adjust the weight to make the probability of picking a polymer proportional to its length
+    std::vector<int> weights(box.objects.size());
+    for (int i = 0; i < box.objects.size(); ++i) {
+        if (i < npolymers) {
+            weights[i] = lpolymer;
+        } else {
+            weights[i] = 1;
+        }
     }
-    return true;  // Move was accepted
+
+    std::discrete_distribution<int> dist(weights.begin(), weights.end());
+
+    int counter = 0;
+    while (counter < pow(box.size, 3)) {
+        counter++;
+        int idx = dist(rng);
+        Object* object1 = box.objects[idx];
+
+        // Get positions associated with object1
+        std::vector<std::tuple<int, int, int>> positions = object1->get_positions();
+
+        // Randomly select one of the positions
+        std::uniform_int_distribution<int> pos_dist(0, positions.size() - 1);
+        int pos_idx = pos_dist(rng);
+        auto site1 = positions[pos_idx];
+
+        // Get neighbors of site1
+        std::vector<std::tuple<int, int, int>> neighbors = box.get_neighbors(site1);
+        std::shuffle(neighbors.begin(), neighbors.end(), rng);
+
+        for (const auto& site2 : neighbors) {
+            Object* object2 = box.get_lattice(site2);
+
+            // Create a move proposal
+            Move move(object1, site1, object2, site2, MoveType::Swap);
+
+            // Validate the move
+            if (!move.validate(box)) {
+                continue;
+            }
+
+            // Compute energy before the move
+            float initial_energy = box.compute_local_energy(site1) + box.compute_local_energy(site2);
+
+            // Apply the move
+            move.apply(box);
+
+            // Compute energy after the move
+            float final_energy = box.compute_local_energy(site1) + box.compute_local_energy(site2);
+
+            // Calculate energy difference
+            float delta_e = final_energy - initial_energy;
+
+            // Decide whether to accept the move
+            std::uniform_real_distribution<float> rand_dist(0.0f, 1.0f);
+            if (delta_e > 0 && rand_dist(rng) >= std::exp(-delta_e / T)) {
+                // Reject the move (revert)
+                move.revert(box);
+                return false;  // Move was rejected
+            }
+            return true;  // Move was accepted
+        }
+    }
+//    return false; // No valid move found
+    throw std::out_of_range("No valid move found");
 }
+
 
 std::vector<bool> MC::monte_carlo_steps(int steps) {
     std::vector<bool> success(steps);

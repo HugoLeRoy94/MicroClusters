@@ -37,7 +37,7 @@ void MC_monte_carlo_steps(MC* mc, int steps, bool* success) {
 }
 
 // Function to perform a single Monte Carlo step.
-bool MC_monte_carlo_step(MC* mc) {
+bool MC_monte_carlo_step(MC* mc) {    
     return mc->monte_carlo_step();
 }
 
