@@ -12,15 +12,6 @@
 #include <numeric>
 #include <vector>
 
-struct TupleHash {
-    std::size_t operator()(const std::tuple<int, int, int>& t) const {
-        auto h1 = std::hash<int>{}(std::get<0>(t));
-        auto h2 = std::hash<int>{}(std::get<1>(t));
-        auto h3 = std::hash<int>{}(std::get<2>(t));
-        return h1 ^ (h2 << 1) ^ (h3 << 2);
-    }
-};
-
 int to_single_index(int x, int y, int z, int L) {
     return x * L * L + y * L + z;
 }
@@ -32,111 +23,63 @@ std::tuple<int, int, int> to_xyz(int index, int L) {
     return std::make_tuple(x, y, z);
 }
 
-std::vector<std::array<int, 3>> generate_unique_triplets(int N, int L) {
-    int total_triplets = (L + 1) * (L + 1) * (L + 1);
-
-    if (N > total_triplets) {
-        throw std::invalid_argument("N is larger than the total number of unique triplets available.");
-    }
-
-    std::vector<int> indices(total_triplets);
-    for (int i = 0; i < total_triplets; ++i) {
-        indices[i] = i;
-    }
-
-    static std::mt19937 rng(std::random_device{}());
-    std::shuffle(indices.begin(), indices.end(), rng);
-
-    std::vector<std::array<int, 3>> triplets(N);
-    for (int i = 0; i < N; ++i) {
-        int selected_index = indices[i];
-
-        int z = selected_index % (L + 1);
-        int y = (selected_index / (L + 1)) % (L + 1);
-        int x = (selected_index / ((L + 1) * (L + 1))) % (L + 1);
-
-        triplets[i] = { x, y, z };
-    }
-    return triplets;
-}
-
 BOX::BOX(int size_, int nobjects, const std::vector<std::vector<float>>& Interactions,double Evalence_)
     : size(size_), E(Interactions), Evalence(Evalence_){
     int total_sites = size * size * size;
     lattice.resize(total_sites);
 
     // Initialize lattice with Empty objects
-    for (int x = 0; x < size; ++x) {
-        for (int y = 0; y < size; ++y) {
-            for (int z = 0; z < size; ++z) {
-                int idx = to_single_index(x, y, z, size);
-                lattice[idx] = new Empty(std::make_tuple(x, y, z));
-            }
-        }
+    for (int idx = 0; idx < total_sites; ++idx) {
+        lattice[idx] = Empty::make_shared_ptr(idx);
     }
 
     // Initialize objects array
-    objects.resize(nobjects, nullptr);
+    objects.reserve(nobjects);
 }
 
-BOX::~BOX() {
-    // Delete all unique Objects in lattice
-    std::unordered_set<Object*> unique_objects;
-    for (auto obj : lattice) {
-        unique_objects.insert(obj);
-    }
-    for (auto obj : unique_objects) {
-        delete obj;
-    }
-}
-
-void BOX::create_new_DHH1(const std::tuple<int,int,int>& site){
-    DHH1* new_dhh1 = new DHH1(site);
-    int idx = to_single_index(std::get<0>(site), std::get<1>(site), std::get<2>(site), size);
-    delete lattice[idx];
-    lattice[idx] = new_dhh1;
+void BOX::create_new_DHH1(int index){
+    auto new_dhh1 = DHH1::make_shared_ptr(index);
+    lattice[index] = new_dhh1;
     objects.push_back(new_dhh1);
-    new_dhh1->setPosition(site);
 }
 
-RNA* BOX::add_RNA(int length) {
-    std::tuple<int,int,int> start_position(random_free_site());
+std::shared_ptr<RNA> BOX::add_RNA(int length) {
+    int start_index = random_free_site();
     // Initialize data structures
-    std::vector<std::tuple<int, int, int>> monomers;
+    std::vector<int> monomers;
     monomers.reserve(length);
-    monomers.push_back(start_position);
+    monomers.push_back(start_index);
 
-    std::unordered_set<std::tuple<int, int, int>, TupleHash> monomer_set;
-    monomer_set.insert(start_position);
+    std::unordered_set<int> monomer_set;
+    monomer_set.insert(start_index);
 
     // Check if the starting position is empty
-    if (!get_lattice(start_position)->isempty()) {
+    if (!get_lattice(start_index)->isempty()) {
         throw std::runtime_error("Starting position is already occupied");
     }
     
-
     // Initialize RNG   
     static std::mt19937 rng(std::random_device{}());
 
     // Build the polymer
     for (int i = 1; i < length; ++i) {
-        std::vector<std::tuple<int, int, int>> neighbors = get_neighbors(monomers[i - 1]);
+        std::vector<int> neighbors = get_neighbors(monomers[i - 1]);
         std::shuffle(neighbors.begin(), neighbors.end(), rng);
 
         bool found = false;
-        for (const auto& neighbor : neighbors) {
-            if (get_lattice(neighbor)->isempty() && monomer_set.find(neighbor) == monomer_set.end()) {
-                monomers.push_back(neighbor);
-                monomer_set.insert(neighbor);
+        for (const auto& neighbor_idx : neighbors) {
+            if (get_lattice(neighbor_idx)->isempty() && monomer_set.find(neighbor_idx) == monomer_set.end()) {
+                monomers.push_back(neighbor_idx);
+                monomer_set.insert(neighbor_idx);
                 found = true;
                 break;
             }
         }
 
         if (!found) {
-            // Dead end encountered; clean up and throw an exception or return nullptr
-            for (const auto& monomer_pos : monomers) {
-                lattice[to_single_index(std::get<0>(monomer_pos),std::get<1>(monomer_pos),std::get<2>(monomer_pos),size)]= new Empty(monomer_pos);
+            // Dead end encountered; clean up and throw an exception
+            for (const auto& monomer_idx : monomers) {
+                lattice[monomer_idx] = Empty::make_shared_ptr(monomer_idx);
             }
             throw std::runtime_error("Unable to place RNA polymer due to dead end");
         }
@@ -144,41 +87,37 @@ RNA* BOX::add_RNA(int length) {
 
     // At this point, the monomer positions are determined
     // Now, create the RNA object
-    RNA* rna = new RNA(monomers);
+    auto rna = RNA::make_shared_ptr(monomers);
     objects.push_back(rna);
 
     // Update the lattice with the RNA object
-    for (const auto& monomer_pos : monomers) {
-        delete lattice[to_single_index(std::get<0>(monomer_pos),std::get<1>(monomer_pos),std::get<2>(monomer_pos),size)];
-        lattice[to_single_index(std::get<0>(monomer_pos),std::get<1>(monomer_pos),std::get<2>(monomer_pos),size)]=rna;
+    for (const auto& monomer_idx : monomers) {
+        lattice[monomer_idx] = rna;
     }
 
     return rna;
 }
 
-void BOX::swap(const std::tuple<int, int, int>& site1, const std::tuple<int, int, int>& site2) {
-    int idx1 = to_single_index(std::get<0>(site1), std::get<1>(site1), std::get<2>(site1), size);
-    int idx2 = to_single_index(std::get<0>(site2), std::get<1>(site2), std::get<2>(site2), size);
-
+void BOX::swap(int idx1, int idx2) {
     std::swap(lattice[idx1], lattice[idx2]);
 
     // Update the positions of the objects
-    lattice[idx1]->setPosition(site1);
-    lattice[idx2]->setPosition(site2);
+    lattice[idx1]->setPosition(idx1);
+    lattice[idx2]->setPosition(idx2);
 
     clusters_valid = false; // Invalidate cluster data
 }
 
-Object* BOX::get_lattice(const std::tuple<int, int, int>& site) const {
-    int x = std::get<0>(site);
-    int y = std::get<1>(site);
-    int z = std::get<2>(site);
-    int idx = to_single_index(x, y, z, size);
-    return lattice[idx];
+std::shared_ptr<Object> BOX::get_lattice(int index) const {
+    return lattice[index];
 }
 
-float BOX::compute_local_energy(const std::tuple<int, int, int>& xyz) const {
-    Object* obj = get_lattice(xyz);
+void BOX::set_lattice(int index, std::shared_ptr<Object> obj) {
+    lattice[index] = obj;
+}
+
+float BOX::compute_local_energy(int index) const {
+    auto obj = get_lattice(index);
     if (obj->isempty()) {
         return 0.0f;
     }
@@ -188,25 +127,20 @@ float BOX::compute_local_energy(const std::tuple<int, int, int>& xyz) const {
 
 float BOX::total_energy() const {
     float energy = 0.0f;
-    for (int x = 0; x < size; ++x) {
-        for (int y = 0; y < size; ++y) {
-            for (int z = 0; z < size; ++z) {
-                Object* obj = get_lattice(std::make_tuple(x, y, z));
-                if (!obj->isempty()) {
-                    energy += obj->compute_local_energy(*this);
-                }
-            }
+    for (int idx = 0; idx < size * size * size; ++idx) {
+        auto obj = get_lattice(idx);
+        if (!obj->isempty()) {
+            energy += obj->compute_local_energy(*this);
         }
     }
     return energy / 2.0f;  // Correct for double counting
 }
 
-std::vector<std::tuple<int, int, int>> BOX::get_neighbors(const std::tuple<int, int, int>& xyz) const {
-    int x = std::get<0>(xyz);
-    int y = std::get<1>(xyz);
-    int z = std::get<2>(xyz);
+std::vector<int> BOX::get_neighbors(int index) const {
+    int x, y, z;
+    std::tie(x, y, z) = to_xyz(index, size);
 
-    std::vector<std::tuple<int, int, int>> neighbors;
+    std::vector<int> neighbors;
     neighbors.reserve(26);
     for (int dx = -1; dx <=1; ++dx) {
         for (int dy = -1; dy <=1; ++dy) {
@@ -217,17 +151,18 @@ std::vector<std::tuple<int, int, int>> BOX::get_neighbors(const std::tuple<int, 
                 int nx = (x + dx + size) % size;
                 int ny = (y + dy + size) % size;
                 int nz = (z + dz + size) % size;
-                neighbors.push_back(std::make_tuple(nx, ny, nz));
+                int neighbor_idx = to_single_index(nx, ny, nz, size);
+                neighbors.push_back(neighbor_idx);
             }
         }
     }
     return neighbors;
 }
 
-bool BOX::has_free_neighbor(const std::tuple<int, int, int>& xyz) const {
-    auto neighbors = get_neighbors(xyz);
-    for (const auto& nxyz : neighbors) {
-        Object* neighbor_obj = get_lattice(nxyz);
+bool BOX::has_free_neighbor(int index) const {
+    auto neighbors = get_neighbors(index);
+    for (const auto& nidx : neighbors) {
+        auto neighbor_obj = get_lattice(nidx);
         if (neighbor_obj->isempty()) {
             return true;
         }
@@ -235,8 +170,38 @@ bool BOX::has_free_neighbor(const std::tuple<int, int, int>& xyz) const {
     return false;
 }
 
-// Placeholder implementations for build_clusters, cluster_size, and compute_av_Nneigh
+// Implement cluster-related methods similarly, adjusting for index-based positions
 
+std::vector<int> BOX::generate_unique_indices(int N) {
+    int total_sites = size * size * size;
+    if (N > total_sites) {
+        throw std::invalid_argument("N is larger than the total number of sites available.");
+    }
+
+    std::vector<int> indices(total_sites);
+    for (int i = 0; i < total_sites; ++i) {
+        indices[i] = i;
+    }
+
+    static std::mt19937 rng(std::random_device{}());
+    std::shuffle(indices.begin(), indices.end(), rng);
+
+    indices.resize(N);
+    return indices;
+}
+
+int BOX::random_free_site(){
+    static std::mt19937 rng(std::random_device{}());
+    while(true){
+        std::uniform_int_distribution<int> dist(0, lattice.size() - 1);
+        int idx = dist(rng);
+        if(lattice[idx]->isempty()){return idx;}
+    }
+}
+// Placeholder implementations for build_clusters, cluster_size, and compute_av_Nneigh
+// Clustering Functions
+
+// Build clusters using Depth-First Search (DFS)
 void BOX::build_clusters() {
     int total_sites = size * size * size;
     std::vector<bool> visited(total_sites, false);
@@ -247,116 +212,104 @@ void BOX::build_clusters() {
     cluster_starts.clear();
     cluster_starts.reserve(total_sites);
 
-    int current_index = 0;
+    int current_cluster_start = 0;
 
-    // Define the flood_fill function
+    // Define the flood_fill function using a lambda
     std::function<void(int)> flood_fill = [&](int start_index) {
         std::stack<int> stack;
         stack.push(start_index);
-        int cluster_start = current_index;
+        cluster_starts.push_back(static_cast<int>(cluster_indices.size()));
 
         while (!stack.empty()) {
             int current_idx = stack.top();
             stack.pop();
+
             if (!visited[current_idx]) {
                 visited[current_idx] = true;
                 cluster_indices.push_back(current_idx);
-                current_index++;
-                int x, y, z;
-                std::tie(x, y, z) = to_xyz(current_idx, size);
-                auto neighbors = get_neighbors(std::make_tuple(x, y, z));
-                for (const auto& neighbor : neighbors) {
-                    int nx = std::get<0>(neighbor);
-                    int ny = std::get<1>(neighbor);
-                    int nz = std::get<2>(neighbor);
-                    int neighbor_idx = to_single_index(nx, ny, nz, size);
-                    if (!visited[neighbor_idx]) {
-                        Object* neighbor_obj = get_lattice(neighbor);
-                        if (!neighbor_obj->isempty()) {
-                            stack.push(neighbor_idx);
-                        }
+
+                auto neighbors = get_neighbors(current_idx);
+                for (const auto& neighbor_idx : neighbors) {
+                    auto neighbor_obj = get_lattice(neighbor_idx);
+                    if (!neighbor_obj->isempty() && !visited[neighbor_idx]) {
+                        stack.push(neighbor_idx);
                     }
                 }
             }
-        }
-        if (current_index > cluster_start) {
-            cluster_starts.push_back(cluster_start);
         }
     };
 
     // Iterate over all lattice sites
-    for (int x = 0; x < size; ++x) {
-        for (int y = 0; y < size; ++y) {
-            for (int z = 0; z < size; ++z) {
-                int idx = to_single_index(x, y, z, size);
-                if (!visited[idx]) {
-                    Object* obj = get_lattice(std::make_tuple(x, y, z));
-                    if (!obj->isempty()) {
-                        // Start a new cluster
-                        flood_fill(idx);
-                    } else {
-                        visited[idx] = true;
-                    }
-                }
+    for (int idx = 0; idx < total_sites; ++idx) {
+        if (!visited[idx]) {
+            auto obj = get_lattice(idx);
+            if (!obj->isempty()) {
+                // Start a new cluster
+                flood_fill(idx);
+            } else {
+                visited[idx] = true;
             }
         }
     }
+
     clusters_valid = true; // Mark clusters as valid
 }
 
+// Compute sizes of all clusters
 std::vector<int> BOX::cluster_size() {
     if (!clusters_valid) {
         build_clusters();
     }
-    // Append length of cluster_indices to cluster_starts to mark the end
-    //cluster_starts.push_back(cluster_indices.size());
-    // Compute sizes as differences between consecutive cluster_starts
+
     std::vector<int> sizes;
-    sizes.reserve(cluster_starts.size()-1);
-    for (size_t i = 0; i < cluster_starts.size() - 1; ++i) {
-        int size = cluster_starts[i + 1] - cluster_starts[i];
-        sizes.push_back(size);
+    sizes.reserve(cluster_starts.size());
+
+    for (size_t i = 0; i < cluster_starts.size(); ++i) {
+        if (i < cluster_starts.size() - 1) {
+            sizes.push_back(cluster_starts[i + 1] - cluster_starts[i]);
+        } else {
+            sizes.push_back(static_cast<int>(cluster_indices.size()) - cluster_starts[i]);
+        }
     }
-    sizes.push_back(cluster_indices.size()-cluster_starts.back());
+
     return sizes;
 }
 
+// Compute the average cluster size
 double BOX::average_cluster_size() {
     std::vector<int> sizes = cluster_size();
     if (sizes.empty()) {
         return 0.0;
     }
     double total_size = std::accumulate(sizes.begin(), sizes.end(), 0.0);
-    return total_size / sizes.size();
+    return total_size / static_cast<double>(sizes.size());
 }
 
+// Compute the average number of neighbors for occupied sites
 double BOX::compute_av_Nneigh() const {
     double total_neighbors = 0.0;
     int occupied_sites = 0;
 
-    for (int x = 0; x < size; ++x) {
-        for (int y = 0; y < size; ++y) {
-            for (int z = 0; z < size; ++z) {
-                Object* obj = get_lattice(std::make_tuple(x, y, z));
-                if (!obj->isempty()) {
-                    int neighbor_count = 0;
-                    auto neighbors = get_neighbors(std::make_tuple(x, y, z));
-                    for (const auto& neighbor : neighbors) {
-                        Object* neighbor_obj = get_lattice(neighbor);
-                        if (!neighbor_obj->isempty()) {
-                            ++neighbor_count;
-                        }
-                    }
-                    total_neighbors += neighbor_count;
-                    ++occupied_sites;
+    for (int idx = 0; idx < size * size * size; ++idx) {
+        auto obj = get_lattice(idx);
+        if (!obj->isempty()) {
+            int neighbor_count = 0;
+            auto neighbors = get_neighbors(idx);
+            for (const auto& neighbor_idx : neighbors) {
+                auto neighbor_obj = get_lattice(neighbor_idx);
+                if (!neighbor_obj->isempty()) {
+                    ++neighbor_count;
                 }
             }
+            total_neighbors += neighbor_count;
+            ++occupied_sites;
         }
     }
 
-    return occupied_sites > 0 ? total_neighbors / occupied_sites : 0.0;
+    return occupied_sites > 0 ? (total_neighbors / static_cast<double>(occupied_sites)) : 0.0;
 }
 
+// Get cluster indices
 const std::vector<int>& BOX::get_cluster_indices() {
     if (!clusters_valid) {
         build_clusters();
@@ -364,6 +317,7 @@ const std::vector<int>& BOX::get_cluster_indices() {
     return cluster_indices;
 }
 
+// Get cluster starts
 const std::vector<int>& BOX::get_cluster_starts() {
     if (!clusters_valid) {
         build_clusters();
@@ -371,6 +325,7 @@ const std::vector<int>& BOX::get_cluster_starts() {
     return cluster_starts;
 }
 
+// Get the size of cluster_indices
 size_t BOX::get_cluster_indices_size() {
     if (!clusters_valid) {
         build_clusters();
@@ -378,18 +333,10 @@ size_t BOX::get_cluster_indices_size() {
     return cluster_indices.size();
 }
 
+// Get the size of cluster_starts
 size_t BOX::get_cluster_starts_size() {
     if (!clusters_valid) {
         build_clusters();
     }
     return cluster_starts.size();
-}
-
-std::tuple<int,int,int> BOX::random_free_site(){
-    static std::mt19937 rng(std::random_device{}());
-    while(true){
-        std::uniform_int_distribution<int> dist(0, lattice.size() - 1);
-        int idx = dist(rng);
-        if(lattice[idx]->isempty()){return to_xyz(idx,size);}
-    }
 }

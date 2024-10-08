@@ -4,28 +4,29 @@
 
 #include <vector>
 #include <tuple>
+#include <memory>
 #include "Objects.h"
 
 class BOX {
 public:
     int size;
-    std::vector<Object*> lattice;  // 1D vector to represent 3D lattice
-    std::vector<Object*> objects;
+    std::vector<std::shared_ptr<Object>> lattice;  // 1D vector to represent 3D lattice
+    std::vector<std::shared_ptr<Object>> objects;
     std::vector<std::vector<float>> E;  // Interaction matrix
     double Evalence;
     bool clusters_valid = false;
 
     BOX(int size_, int nobjects,const std::vector<std::vector<float>>& Interactions,double Evalence_);
-    ~BOX();
 
-    void create_new_DHH1(const std::tuple<int, int, int>& site);
-    RNA* add_RNA(int length);
-    Object* get_lattice(const std::tuple<int, int, int>& site) const;
-    void swap(const std::tuple<int, int, int>& site1, const std::tuple<int, int, int>& site2);
-    float compute_local_energy(const std::tuple<int, int, int>& xyz) const;
+    void create_new_DHH1(int index);
+    std::shared_ptr<RNA> add_RNA(int length);
+    std::shared_ptr<Object> get_lattice(int index) const;
+    void set_lattice(int index, std::shared_ptr<Object> obj);
+    void swap(int idx1, int idx2);
+    float compute_local_energy(int index) const;
     float total_energy() const;
-    std::vector<std::tuple<int, int, int>> get_neighbors(const std::tuple<int, int, int>& xyz) const;
-    bool has_free_neighbor(const std::tuple<int, int, int>& xyz) const;
+    std::vector<int> get_neighbors(int index) const;
+    bool has_free_neighbor(int index) const;
 
     // Additional methods
     // Function to build clusters and update member variables
@@ -41,6 +42,9 @@ public:
     std::vector<int> cluster_size();
     double average_cluster_size();
     double compute_av_Nneigh() const;
+
+    std::vector<int> generate_unique_indices(int N);
+
 private:
     int npolymers;
     // Disallow copying
@@ -51,11 +55,10 @@ private:
     std::vector<int> cluster_indices;
     std::vector<int> cluster_starts;    
 
-    std::tuple<int,int,int> random_free_site();
+    int random_free_site();
 };
 
 int to_single_index(int x, int y, int z, int L);
 std::tuple<int, int, int> to_xyz(int index, int L);
-std::vector<std::array<int, 3>> generate_unique_triplets(int N, int L);
 
 #endif // BOX_H

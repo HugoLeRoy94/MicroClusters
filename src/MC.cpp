@@ -30,24 +30,10 @@ void MC::generate_polymers(int npolymers, int lpolymer) {
     return;
 }
 
-bool MC::add_random_poly(int lpolymer) {
-    // Implement the function to add a random polymer of length lpolymer
-    // This is non-trivial and depends on how you represent polymers
-    // For now, return false as a placeholder
-    return false;
-}
-
 void MC::generate_particles(int nparticles) {
-    auto particles = generate_unique_triplets(nparticles, box.size - 1);
-    for (int idx = 0; idx < particles.size(); ++idx) {
-        int x = particles[idx][0];
-        int y = particles[idx][1];
-        int z = particles[idx][2];
-
-        box.create_new_DHH1(std::make_tuple(x, y, z));
-        //DHH1* new_dhh1 = new DHH1(std::make_tuple(x, y, z));
-        //box.set_lattice(std::make_tuple(x, y, z), new_dhh1);
-        //box.objects[npolymers + idx] = new_dhh1;  // Polymers must be generated first        
+    auto particle_indices = box.generate_unique_indices(nparticles);
+    for (const auto& idx : particle_indices) {
+        box.create_new_DHH1(idx);
     }
 }
 
@@ -56,8 +42,8 @@ bool MC::monte_carlo_step() {
 
     // Adjust the weight to make the probability of picking a polymer proportional to its length
     std::vector<int> weights(box.objects.size());
-    for (int i = 0; i < box.objects.size(); ++i) {
-        if (i < npolymers) {
+    for (size_t i = 0; i < box.objects.size(); ++i) {
+        if (i < static_cast<size_t>(npolymers)) {
             weights[i] = lpolymer;
         } else {
             weights[i] = 1;
@@ -70,22 +56,22 @@ bool MC::monte_carlo_step() {
     while (counter < pow(box.size, 3)) {
         counter++;
         int idx = dist(rng);
-        Object* object1 = box.objects[idx];
+        auto object1 = box.objects[idx];
 
         // Get positions associated with object1
-        std::vector<std::tuple<int, int, int>> positions = object1->get_positions();
+        std::vector<int> positions = object1->get_positions();
 
         // Randomly select one of the positions
         std::uniform_int_distribution<int> pos_dist(0, positions.size() - 1);
         int pos_idx = pos_dist(rng);
-        auto site1 = positions[pos_idx];
+        int site1 = positions[pos_idx];
 
         // Get neighbors of site1
-        std::vector<std::tuple<int, int, int>> neighbors = box.get_neighbors(site1);
+        std::vector<int> neighbors = box.get_neighbors(site1);
         std::shuffle(neighbors.begin(), neighbors.end(), rng);
 
         for (const auto& site2 : neighbors) {
-            Object* object2 = box.get_lattice(site2);
+            auto object2 = box.get_lattice(site2);
 
             // Create a move proposal
             Move move(object1, site1, object2, site2, MoveType::Swap);
@@ -117,7 +103,6 @@ bool MC::monte_carlo_step() {
             return true;  // Move was accepted
         }
     }
-//    return false; // No valid move found
     throw std::out_of_range("No valid move found");
 }
 

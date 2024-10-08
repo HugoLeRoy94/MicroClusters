@@ -1,7 +1,10 @@
+#ifndef MOVE_H
+#define MOVE_H
+
 #include <tuple>
+#include <memory>
 #include "Objects.h"
 #include "BOX.h"
-
 
 enum class MoveType {
     Swap,
@@ -10,8 +13,8 @@ enum class MoveType {
 
 class Move {
 public:
-    Move(Object* obj1, const std::tuple<int, int, int>& pos1,
-         Object* obj2, const std::tuple<int, int, int>& pos2,
+    Move(std::shared_ptr<Object> obj1, int pos1,
+         std::shared_ptr<Object> obj2, int pos2,
          MoveType type);
 
     bool validate(const BOX& box) const;
@@ -21,11 +24,13 @@ public:
     // Additional methods as needed
 
 private:
-    Object* object1;
-    Object* object2;
-    std::tuple<int, int, int> site1;
-    std::tuple<int, int, int> site2;
+    std::shared_ptr<Object> object1;
+    std::shared_ptr<Object> object2;
+    int site1;
+    int site2;
     MoveType move_type;
 
     // Store any additional state needed to revert the move
 };
+
+#endif // MOVE_H

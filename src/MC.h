@@ -20,7 +20,6 @@ public:
     MC(int size, int nparticles_, int npolymers_, int lpolymer_, const std::vector<std::vector<float>>& interactions,double Evalence_, float temperature);
 
     void generate_polymers(int npolymers, int lpolymer);
-    bool add_random_poly(int lpolymer);
     void generate_particles(int nparticles);
     bool monte_carlo_step();
     std::vector<bool> monte_carlo_steps(int steps);

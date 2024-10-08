@@ -1,7 +1,7 @@
 #include "Move.h"
 
-Move::Move(Object* obj1, const std::tuple<int, int, int>& pos1,
-           Object* obj2, const std::tuple<int, int, int>& pos2,
+Move::Move(std::shared_ptr<Object> obj1, int pos1,
+           std::shared_ptr<Object> obj2, int pos2,
            MoveType type)
     : object1(obj1), object2(obj2), site1(pos1), site2(pos2), move_type(type) {
     // Initialization if needed
@@ -12,10 +12,10 @@ bool Move::validate(const BOX& box) const {
     // For RNA objects, check if they remain connected after the move
 
     // Check for object1
-    if (RNA* rna1 = dynamic_cast<RNA*>(object1)) {
+    if (auto rna1 = std::dynamic_pointer_cast<RNA>(object1)) {
         int idx1 = rna1->get_monomer_index(site1);
         if (idx1 != -1) {
-            if (!rna1->would_be_connected_after_move(idx1, site2)) {
+            if (!rna1->would_be_connected_after_move(idx1, site2,box.size)) {
                 return false;
             }
         }
@@ -23,10 +23,10 @@ bool Move::validate(const BOX& box) const {
 
     // Check for object2 (if not Empty)
     if (object2 && !object2->isempty()) {
-        if (RNA* rna2 = dynamic_cast<RNA*>(object2)) {
+        if (auto rna2 = std::dynamic_pointer_cast<RNA>(object2)) {
             int idx2 = rna2->get_monomer_index(site2);
             if (idx2 != -1) {
-                if (!rna2->would_be_connected_after_move(idx2, site1)) {
+                if (!rna2->would_be_connected_after_move(idx2, site1,box.size)) {
                     return false;
                 }
             }
@@ -44,7 +44,7 @@ void Move::apply(BOX& box) {
     box.set_lattice(site2, object1);
 
     // Update the positions of the objects
-    if (RNA* rna1 = dynamic_cast<RNA*>(object1)) {
+    if (auto rna1 = std::dynamic_pointer_cast<RNA>(object1)) {
         // Update the monomer position in rna1's monomers vector
         int idx1 = rna1->get_monomer_index(site1);
         if (idx1 != -1) {
@@ -56,7 +56,7 @@ void Move::apply(BOX& box) {
     }
 
     if (object2 && !object2->isempty()) {
-        if (RNA* rna2 = dynamic_cast<RNA*>(object2)) {
+        if (auto rna2 = std::dynamic_pointer_cast<RNA>(object2)) {
             // Update the monomer position in rna2's monomers vector
             int idx2 = rna2->get_monomer_index(site2);
             if (idx2 != -1) {
@@ -74,14 +74,13 @@ void Move::apply(BOX& box) {
     box.clusters_valid = false;
 }
 
-
 void Move::revert(BOX& box) {
     // Swap back the objects in the lattice
     box.set_lattice(site1, object1);
     box.set_lattice(site2, object2);
 
     // Revert the positions of the objects
-    if (RNA* rna1 = dynamic_cast<RNA*>(object1)) {
+    if (auto rna1 = std::dynamic_pointer_cast<RNA>(object1)) {
         // Revert the monomer position in rna1's monomers vector
         int idx1 = rna1->get_monomer_index(site2);
         if (idx1 != -1) {
@@ -93,7 +92,7 @@ void Move::revert(BOX& box) {
     }
 
     if (object2 && !object2->isempty()) {
-        if (RNA* rna2 = dynamic_cast<RNA*>(object2)) {
+        if (auto rna2 = std::dynamic_pointer_cast<RNA>(object2)) {
             // Revert the monomer position in rna2's monomers vector
             int idx2 = rna2->get_monomer_index(site1);
             if (idx2 != -1) {

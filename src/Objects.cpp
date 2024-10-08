@@ -5,21 +5,38 @@
 #include <stdexcept>
 
 
+namespace{
+    struct concrete_DHH1: public DHH1{
+        concrete_DHH1(int position_): DHH1(position_){}
+    };
+    struct concrete_RNA: public RNA{
+        concrete_RNA(std::vector<int>positions_):RNA(positions_){}
+    };
+    struct concrete_Empty: public Empty{
+        concrete_Empty(int position_): Empty(position_){}
+    };
+}
+
+
 // Object Class Implementation
-Object::Object(const std::tuple<int, int, int>& position_) : position(position_) {}
+Object::Object(int position_) : position(position_) {}
 Object::~Object() {}
 
-const std::tuple<int, int, int>& Object::getPosition() const { return position; }
-std::vector<std::tuple<int, int, int>> Object::get_positions() const {
+int Object::getPosition() const { return position; }
+std::vector<int> Object::get_positions() const {
     return {getPosition()};
 }
-void Object::setPosition(const std::tuple<int, int, int>& value) { position = value; }
+void Object::setPosition(int value) { position = value; }
 bool Object::isempty() const { return false; }
 int Object::Index() const { return 0; }
-std::tuple<int, int, int> Object::get_site_to_exchange(const BOX& box) const { return position; }
+int Object::get_site_to_exchange(const BOX& box) const { return position; }
 
 // Empty Class Implementation
-Empty::Empty(const std::tuple<int, int, int>& position_) : Object(position_) {}
+Empty::Empty(int position_) : Object(position_) {}
+
+std::shared_ptr<Empty> Empty::make_shared_ptr(int position_){
+    return std::make_shared<concrete_Empty>(position_);
+}
 Empty::~Empty() {}
 bool Empty::isempty() const { return true; }
 int Empty::Index() const { return 0; }
@@ -28,28 +45,33 @@ float Empty::compute_local_energy(const BOX& box) const {
     return 0.0f;
 }
 
-
 // RNA Class Implementation
-RNA::RNA(std::vector<std::tuple<int,int,int>>& monomers_)
+RNA::RNA(std::vector<int>& monomers_)
     : Object(monomers_[0]) {
         monomers = monomers_;
 }
 
+std::shared_ptr<RNA> RNA::make_shared_ptr(std::vector<int>& monomers_){
+    return std::make_shared<concrete_RNA>(monomers_);
+}
+
 RNA::~RNA() {}
+
 int RNA::Index() const { return 2; }
+
 bool RNA::isconnected(int idx, const BOX& box) const {
     // Ensure idx is within bounds
     if (idx < 0 || idx >= monomers.size()) {
         throw std::out_of_range("Index out of bounds in RNA::isconnected");
     }
 
-    const auto& current_monomer = monomers[idx];
+    int current_monomer = monomers[idx];
     // Get neighbors of the current monomer
-    std::vector<std::tuple<int, int, int>> neighbors = box.get_neighbors(current_monomer);
+    std::vector<int> neighbors = box.get_neighbors(current_monomer);
 
     // Check connections
     if (idx > 0) {
-        const auto& prev_monomer = monomers[idx - 1];
+        int prev_monomer = monomers[idx - 1];
         // If previous monomer is not a neighbor, return false
         if (std::find(neighbors.begin(), neighbors.end(), prev_monomer) == neighbors.end()) {
             return false;
@@ -57,7 +79,7 @@ bool RNA::isconnected(int idx, const BOX& box) const {
     }
 
     if (idx < monomers.size() - 1) {
-        const auto& next_monomer = monomers[idx + 1];
+        int next_monomer = monomers[idx + 1];
         // If next monomer is not a neighbor, return false
         if (std::find(neighbors.begin(), neighbors.end(), next_monomer) == neighbors.end()) {
             return false;
@@ -68,12 +90,12 @@ bool RNA::isconnected(int idx, const BOX& box) const {
     return true;
 }
 
-bool RNA::would_be_connected_after_move(int idx, const std::tuple<int, int, int>& new_pos) const {
-    int size = monomers.size();
+bool RNA::would_be_connected_after_move(int idx, int new_pos, int L) const {
+    int size = static_cast<int>(monomers.size());
 
     // Check previous monomer
     if (idx > 0) {
-        int dist = chebyshev_distance(new_pos, monomers[idx - 1]);
+        int dist = chebyshev_distance(new_pos, monomers[idx - 1], L);
         if (dist > 1) {
             return false;
         }
@@ -81,7 +103,7 @@ bool RNA::would_be_connected_after_move(int idx, const std::tuple<int, int, int>
 
     // Check next monomer
     if (idx < size - 1) {
-        int dist = chebyshev_distance(new_pos, monomers[idx + 1]);
+        int dist = chebyshev_distance(new_pos, monomers[idx + 1], L);
         if (dist > 1) {
             return false;
         }
@@ -90,88 +112,7 @@ bool RNA::would_be_connected_after_move(int idx, const std::tuple<int, int, int>
     return true;
 }
 
-
-/*
-std::tuple<int, int, int> RNA::get_site_to_exchange(const BOX& box) const {
-    // Initialize random number generator
-    static std::mt19937 rng(std::random_device{}());
-
-    // Step 1: Randomly select a monomer index idx
-    std::uniform_int_distribution<int> dist(0, monomers.size() - 1);
-    int idx = dist(rng);
-
-    // Get current position of monomer idx
-    auto current_pos = monomers[idx];
-
-    // Get neighbors of current_pos
-    std::vector<std::tuple<int, int, int>> neighbors = box.get_neighbors(current_pos);
-
-    // Shuffle neighbors to randomize the order
-    std::shuffle(neighbors.begin(), neighbors.end(), rng);
-
-    // For each neighbor, check if move is valid
-    for (const auto& neighbor_pos : neighbors) {
-        Object* neighbor_obj = box.get_lattice(neighbor_pos);
-
-        if (neighbor_obj->isempty()) {
-            // Empty site; check if moving keeps RNA connected
-            if (isconnected(idx, neighbor_pos)) {
-                // Return the site and monomer index as needed
-                return neighbor_pos;
-            }
-        } else if (neighbor_obj->Index() == 2) {
-            // Neighbor is another RNA monomer; check swapping
-            RNA* neighbor_rna = dynamic_cast<RNA*>(neighbor_obj);
-
-            if (neighbor_rna == nullptr) {
-                continue; // Skip if not an RNA object
-            }
-
-            // Get index of neighbor monomer in its RNA
-            int neighbor_idx = neighbor_rna->get_monomer_index(neighbor_pos);
-
-            if (neighbor_idx == -1) {
-                continue; // Monomer not found in its RNA
-            }
-
-            // Simulate swapping positions
-            // Check if both RNAs remain connected after swap
-            bool this_rna_connected = true;
-            bool neighbor_rna_connected = true;
-
-            // For this RNA
-            if (idx > 0) {
-                this_rna_connected &= (chebyshev_distance(neighbor_pos, monomers[idx - 1]) <= 1);
-            }
-            if (idx < monomers.size() - 1) {
-                this_rna_connected &= (chebyshev_distance(neighbor_pos, monomers[idx + 1]) <= 1);
-            }
-
-            // For neighbor RNA
-            if (neighbor_idx > 0) {
-                neighbor_rna_connected &= (chebyshev_distance(current_pos, neighbor_rna->monomers[neighbor_idx - 1]) <= 1);
-            }
-            if (neighbor_idx < neighbor_rna->monomers.size() - 1) {
-                neighbor_rna_connected &= (chebyshev_distance(current_pos, neighbor_rna->monomers[neighbor_idx + 1]) <= 1);
-            }
-
-            if (this_rna_connected && neighbor_rna_connected) {
-                // Valid swap
-                return neighbor_pos;
-            }
-        } else {
-            // Neighboring site contains another object; skip
-            continue;
-        }
-    }
-
-    // No valid site found
-    throw std::runtime_error("No valid site found to exchange");
-}
-
-*/
-
-int RNA::get_monomer_index(const std::tuple<int, int, int>& position) const {
+int RNA::get_monomer_index(int position) const {
     auto it = std::find(monomers.begin(), monomers.end(), position);
     if (it != monomers.end()) {
         return static_cast<int>(std::distance(monomers.begin(), it));
@@ -181,51 +122,47 @@ int RNA::get_monomer_index(const std::tuple<int, int, int>& position) const {
 }
 
 float RNA::compute_local_energy(const BOX& box) const {
-    // Implement the local energy calculation for RNA objects
-    auto neighbors = box.get_neighbors(position);
-    float local_energy = 0.0f;    
-    for (const auto& nxyz : neighbors) {
-        Object* neighbor_obj = box.get_lattice(nxyz);
-        local_energy -= box.E[Index()][neighbor_obj->Index()];
+    float local_energy = 0.0f;
+    for (const auto& idx : monomers) {
+        auto neighbors = box.get_neighbors(idx);
+        for (const auto& nidx : neighbors) {
+            auto neighbor_obj = box.get_lattice(nidx);
+            local_energy -= box.E[Index()][neighbor_obj->Index()];
+        }
     }
-
     return local_energy;
 }
 
-std::vector<std::tuple<int, int, int>> RNA::get_positions() const {
+std::vector<int> RNA::get_positions() const {
     return monomers;
 }
-
-std::vector<std::tuple<int, int, int>> RNA::get_positions() const {
-    return monomers;
-}
-
 
 // DHH1 Class Implementation
-DHH1::DHH1(const std::tuple<int, int, int>& position_) : Object(position_) {}
+DHH1::DHH1(int position_) : Object(position_) {}
+
+std::shared_ptr<DHH1> DHH1::make_shared_ptr(int position_){
+    return std::make_shared<concrete_DHH1>(position_);
+}
 DHH1::~DHH1() {}
 int DHH1::Index() const { return 1; }
 
-std::tuple<int, int, int> DHH1::get_site_to_exchange(const BOX& box) const {
+int DHH1::get_site_to_exchange(const BOX& box) const {
     static std::mt19937 rng(std::random_device{}());
-    std::uniform_int_distribution<int> dist(0, box.size - 1);
+    std::uniform_int_distribution<int> dist(0, box.size * box.size * box.size - 1);
 
-    int x, y, z;
+    int idx;
     do {
-        x = dist(rng);
-        y = dist(rng);
-        z = dist(rng);
-    } while (std::make_tuple(x, y, z) == position);
+        idx = dist(rng);
+    } while (idx == position);
 
-    return std::make_tuple(x, y, z);
+    return idx;
 }
 float DHH1::compute_local_energy(const BOX& box) const {
-    // Implement the local energy calculation for DHH1 objects
     auto neighbors = box.get_neighbors(position);
     float local_energy = 0.0f;
     int neigh_count(0);
-    for (const auto& nxyz : neighbors) {
-        Object* neighbor_obj = box.get_lattice(nxyz);
+    for (const auto& nidx : neighbors) {
+        auto neighbor_obj = box.get_lattice(nidx);
         local_energy -= box.E[Index()][neighbor_obj->Index()];
         if(!neighbor_obj->isempty()){
             neigh_count+=1;
@@ -236,15 +173,20 @@ float DHH1::compute_local_energy(const BOX& box) const {
     return local_energy;
 }
 
+int chebyshev_distance(int pos1, int pos2, int L) {
+    int x1, y1, z1;
+    std::tie(x1, y1, z1) = to_xyz(pos1, L);
+    int x2, y2, z2;
+    std::tie(x2, y2, z2) = to_xyz(pos2, L);
 
-double distance(std::tuple<int,int,int> site1, std::tuple<int,int,int> site2){
-    return sqrt(pow(std::get<0>(site1)-std::get<0>(site2),2)+
-    pow(std::get<1>(site1)-std::get<1>(site2),2)+
-    pow(std::get<2>(site1)-std::get<2>(site2),2));
-}
+    int dx = std::abs(x1 - x2);
+    int dy = std::abs(y1 - y2);
+    int dz = std::abs(z1 - z2);
 
-int chebyshev_distance(const std::tuple<int, int, int>& pos1, const std::tuple<int, int, int>& pos2) {
-    return std::max({std::abs(std::get<0>(pos1) - std::get<0>(pos2)),
-                     std::abs(std::get<1>(pos1) - std::get<1>(pos2)),
-                     std::abs(std::get<2>(pos1) - std::get<2>(pos2))});
+    // Account for periodic boundary conditions
+    dx = std::min(dx, L - dx);
+    dy = std::min(dy, L - dy);
+    dz = std::min(dz, L - dz);
+
+    return std::max({dx, dy, dz});
 }

@@ -10,7 +10,7 @@ LDFLAGS = -shared
 TARGET = libmc.so
 
 # Source files
-SOURCES = MC_front.cpp MC.cpp BOX.cpp Objects.cpp
+SOURCES = MC_front.cpp MC.cpp BOX.cpp Objects.cpp Move.cpp
 
 # Object files for the shared library
 SHARED_OBJECTS = $(SOURCES:.cpp=.so.o)
