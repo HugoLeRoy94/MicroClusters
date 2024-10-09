@@ -53,7 +53,7 @@ bool MC::monte_carlo_step() {
     std::discrete_distribution<int> dist(weights.begin(), weights.end());
 
     int counter = 0;
-    while (counter < pow(box.size, 3)) {
+    while (counter < pow(box.size, 3)){
         counter++;
         int idx = dist(rng);
         auto object1 = box.objects[idx];

@@ -59,7 +59,7 @@ protected:
     static std::shared_ptr<RNA> make_shared_ptr(std::vector<int>& monomers_);
     bool isconnected(int idx, const BOX& box) const;
     bool would_be_connected_after_move(int idx, int new_pos, int L) const;
-    virtual int get_site_to_exchange(const BOX& box) const override;
+    //virtual int get_site_to_exchange(const BOX& box) const override;
     std::vector<int> monomers;
     int get_monomer_index(int position) const;
 
@@ -67,7 +67,7 @@ public:
     virtual ~RNA();
     virtual int Index() const override;
     virtual float compute_local_energy(const BOX& box) const override;
-    virtual void setPosition(int value) override;
+    //virtual void setPosition(int value) override;
     virtual std::vector<int> get_positions() const override;
 };
 
