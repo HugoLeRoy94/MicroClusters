@@ -3,6 +3,7 @@ import ctypes
 import numpy as np
 import os
 import sys
+import pyvista as pv
 
 class MC:
     def __init__(self, size, nparticles, npolymers, lpolymer, interactions,Evalence, temperature):
@@ -80,6 +81,21 @@ class MC:
         n = interactions.shape[0]
         interactions_flat = interactions.flatten()
         interactions_flat_p = interactions_flat.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        self.size = size  # Store the size for later use
+        
+        self.nparticles = nparticles
+        self.npolymers = npolymers
+        self.lpolymer = lpolymer
+
+        self.lib.MC_fill_DHH1_positions.argtypes = [ctypes.c_void_p,
+                                                    ctypes.POINTER(ctypes.c_int),
+                                                    ctypes.c_int]
+        self.lib.MC_fill_DHH1_positions.restype = ctypes.c_int
+
+        self.lib.MC_fill_RNA_positions.argtypes = [ctypes.c_void_p,
+                                                   ctypes.POINTER(ctypes.c_int), ctypes.c_int,
+                                                   ctypes.POINTER(ctypes.c_int), ctypes.c_int]
+        self.lib.MC_fill_RNA_positions.restype = ctypes.c_int
 
         # Call MC_new to create a new MC instance
         self.Address = self.lib.MC_new(
@@ -161,3 +177,129 @@ class MC:
         return indices_array, starts_array
     def get_energy(self):
         return self.lib.MC_get_energy(self.Address)
+    def get_DHH1_positions(self):
+        positions_array = np.zeros(self.nparticles, dtype=np.int32)
+        positions_ptr = positions_array.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
+        res = self.lib.MC_fill_DHH1_positions(self.Address, positions_ptr, self.nparticles)
+        if res!=self.nparticles:
+            raise ValueError("Error filling DHH1 positions")
+        return positions_array
+
+    def get_RNA_positions(self):
+        if self.npolymers*self.lpolymer <= 0 or self.npolymers <= 0:
+            return []
+
+        positions_array = np.zeros(self.npolymers*self.lpolymer, dtype=np.int32)
+        lengths_array = np.zeros(self.npolymers, dtype=np.int32)
+
+        positions_ptr = positions_array.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
+        lengths_ptr = lengths_array.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
+
+        res = self.lib.MC_fill_RNA_positions(self.Address,
+                                             positions_ptr, self.npolymers*self.lpolymer,
+                                             lengths_ptr, self.npolymers)
+        if res != self.npolymers*self.lpolymer:
+            raise ValueError("Error filling RNA positions")
+
+        # Split positions_array into individual RNA polymers using lengths_array
+        rna_positions = []
+        pos_index = 0
+        for length in lengths_array:
+            positions = positions_array[pos_index: pos_index + length]
+            rna_positions.append(positions)
+            pos_index += length
+        
+        return rna_positions
+
+            
+
+def to_xyz(index, size):
+    z = index % size
+    y = (index // size) % size
+    x = index // (size * size)
+    return np.array([x, y, z])
+
+def minimal_distance(p1, p2, box_size):
+    delta = (p2 - p1) % box_size
+    delta = np.where(delta > box_size / 2, delta - box_size, delta)
+    return np.linalg.norm(delta)
+
+def chebyshev_distance(p1,p2,size):
+    x1,y1,z1 = to_xyz(p1,size)
+    x2,y2,z2 = to_xyz(p2,size)
+    return np.max(np.abs([x2-x1,y2-y1,z2-z1]))
+
+def plot_simulation(mc, output_filename='simulation.html'):
+    size = mc.size
+
+    # Get DHH1 positions and convert to coordinates
+    dhh1_positions = mc.get_DHH1_positions()
+    dhh1_coords = np.array([to_xyz(pos, size) for pos in dhh1_positions])
+
+    # Get RNA positions and convert to coordinates
+    rna_positions_list = mc.get_RNA_positions()
+    rna_coords_list = []
+    for rna_positions in rna_positions_list:
+        coords = np.array([to_xyz(pos, size) for pos in rna_positions])
+        rna_coords_list.append(coords)
+
+    # Create a PyVista plotter
+    plotter = pv.Plotter()
+
+    # Add the box contour as a light black wireframe cube
+    box_center = (size / 2 - 0.5, size / 2 - 0.5, size / 2 - 0.5)
+    box = pv.Cube(center=box_center, x_length=size, y_length=size, z_length=size)
+    plotter.add_mesh(box, color='black', opacity=0.2, style='wireframe', line_width=1)
+
+    # Add DHH1 particles as points
+    if dhh1_coords.size > 0:
+        dhh1_points = pv.PolyData(dhh1_coords)
+        plotter.add_mesh(dhh1_points, color='red', point_size=10.0, render_points_as_spheres=True)
+
+    # Set threshold slightly above 1 to account for numerical errors
+    threshold = 1.1
+
+    # Add RNA polymers
+    #for coords in rna_coords_list:
+    #    if len(coords) >= 2:
+    #        segments = []
+    #        current_segment = [coords[0]]
+    #        for i in range(1, len(coords)):
+    #            prev = coords[i - 1]
+    #            curr = coords[i]
+    #            #dist = minimal_distance(prev, curr, size)
+    #            dist = chebyshev_distance(prev,curr,size)
+    #            if dist < threshold:
+    #                current_segment.append(curr)
+    #            else:
+    #                # Finalize current segment
+    #                if len(current_segment) >= 1:
+    #                    segments.append(np.array(current_segment))
+    #                current_segment = [curr]
+    #        # Add the last segment
+    #        if len(current_segment) >= 1:
+    #            segments.append(np.array(current_segment))
+    #        # Plot all segments
+    #        for segment in segments:
+    #            if len(segment) >= 2:
+    #                lines = pv.lines_from_points(segment)
+    #                plotter.add_mesh(lines, color='blue', line_width=2.0)
+    #    elif len(coords) == 1:
+    #        # Single monomer (will plot as point below)
+    #        pass  # We will plot all monomers as points next
+
+    # Plot all RNA monomers as points on top of the segments
+    for coords in rna_coords_list:
+        if coords.size > 0:
+            monomer_points = pv.PolyData(coords)
+            plotter.add_mesh(monomer_points, color='blue', point_size=5.0, render_points_as_spheres=True)
+
+    # Set plotter options
+    plotter.set_background('white')
+    plotter.show_axes()
+
+    # Optional: Set the camera position
+    plotter.view_isometric()
+
+    # Save the plot as an HTML file
+    plotter.export_html(output_filename)

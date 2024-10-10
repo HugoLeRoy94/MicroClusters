@@ -14,6 +14,8 @@ public:
     int nparticles;
     float T;  // Temperature
     std::vector<std::vector<float>> E;  // Interaction matrix
+    std::vector<int> get_DHH1_positions() const;
+    std::vector<std::vector<int>> get_RNA_positions() const;
 
     BOX box;
 

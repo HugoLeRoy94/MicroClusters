@@ -96,4 +96,43 @@ double MC_get_energy(MC* mc){
     if(!mc){return -1;}
     return mc->get_energy();
 }
+int MC_fill_DHH1_positions(MC* mc, int* positions_array, int array_length) {
+    if (!mc || !positions_array || array_length <= 0) return -1;
+    const std::vector<int>& positions = mc->get_DHH1_positions();
+    int size = static_cast<int>(positions.size());
+    if (array_length < size) {
+        return -1; // Not enough space
+    }
+    std::copy(positions.begin(), positions.end(), positions_array);
+    return size; // Number of positions filled
+}
+
+int MC_fill_RNA_positions(MC* mc,
+                          int* positions_array, int positions_array_length,
+                          int* lengths_array, int lengths_array_length) {
+    if (!mc || !positions_array || positions_array_length <= 0 ||
+        !lengths_array || lengths_array_length <= 0) {
+        return -1; // Error
+    }
+    const auto& all_positions = mc->get_RNA_positions();
+    int rna_count = static_cast<int>(all_positions.size());
+    if (lengths_array_length < rna_count) {
+        return -1; // Not enough space for lengths
+    }
+    int total_positions = 0;
+    for (const auto& positions : all_positions) {
+        total_positions += static_cast<int>(positions.size());
+    }
+    if (positions_array_length < total_positions) {
+        return -1; // Not enough space for positions
+    }
+    int pos_index = 0;
+    for (int i = 0; i < rna_count; ++i) {
+        const auto& positions = all_positions[i];
+        lengths_array[i] = static_cast<int>(positions.size());
+        std::copy(positions.begin(), positions.end(), positions_array + pos_index);
+        pos_index += positions.size();
+    }
+    return total_positions; // Number of positions filled
+}
 }

@@ -12,7 +12,27 @@ MC::MC(int size, int nparticles_, int npolymers_, int lpolymer_, const std::vect
     generate_particles(nparticles);
     std::cout<<"particles successfully added"<<std::endl;
 }
+// Function to get positions of all DHH1 particles
+std::vector<int> MC::get_DHH1_positions() const {
+    std::vector<int> positions;
+    for (const auto& obj : box.objects) {
+        if (obj->Index() == 1) { // DHH1 objects have Index() == 1
+            positions.push_back(obj->getPosition());
+        }
+    }
+    return positions;
+}
 
+// Function to get positions of all RNA polymers
+std::vector<std::vector<int>> MC::get_RNA_positions() const {
+    std::vector<std::vector<int>> all_positions;
+    for (const auto& obj : box.objects) {
+        if (obj->Index() == 2) { // RNA objects have Index() == 2
+            all_positions.push_back(obj->get_positions());
+        }
+    }
+    return all_positions;
+}
 void MC::generate_polymers(int npolymers, int lpolymer) {
     int npoly = 0;
     int counter(0);    
