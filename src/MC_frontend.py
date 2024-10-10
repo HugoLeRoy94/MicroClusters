@@ -229,6 +229,46 @@ def chebyshev_distance(p1,p2,size):
     x2,y2,z2 = to_xyz(p2,size)
     return np.max(np.abs([x2-x1,y2-y1,z2-z1]))
 
+def clip_segment_to_box(p1, p2, size):
+    x_min,y_min,z_min=-0.5,-0.5,-0.5
+    x_max,y_max,z_max=size-0.5,size-0.5,size-0.5
+    x1,y1,z1 = p1[0],p1[1],p1[2]
+    x2,y2,z2 = p2[0],p2[1],p2[2]
+    dx = x2 - x1
+    dy = y2 - y1
+    dz = z2 - z1
+    p = [-dx, dx, -dy, dy, -dz, dz]
+    q = [x1 - x_min, x_max - x1, y1 - y_min, y_max - y1, z1 - z_min, z_max - z1]
+    t_enter = 0.0
+    t_exit = 1.0
+
+    for i in range(6):
+        if p[i] == 0:  # Check if line is parallel to the clipping boundary
+            if q[i] < 0:
+                return None  # Line is outside and parallel, so completely discarded
+        else:
+            t = q[i] / p[i]
+            if p[i] < 0:
+                if t > t_enter:
+                    t_enter = t
+            else:
+                if t < t_exit:
+                    t_exit = t
+
+    if t_enter > t_exit:
+        return None  # Line is completely outside
+
+    x1_clip = x1 + t_enter * dx
+    y1_clip = y1 + t_enter * dy
+    x2_clip = x1 + t_exit * dx
+    y2_clip = y1 + t_exit * dy
+    z1_clip = z1 + t_enter * dz
+    z2_clip = z2 + t_exit * dz
+
+
+    return np.array([[x1_clip, y1_clip, z1_clip],[x2_clip, y2_clip, z2_clip]])
+
+
 def plot_simulation(mc, output_filename='simulation.html'):
     size = mc.size
 
@@ -256,48 +296,54 @@ def plot_simulation(mc, output_filename='simulation.html'):
         dhh1_points = pv.PolyData(dhh1_coords)
         plotter.add_mesh(dhh1_points, color='red', point_size=10.0, render_points_as_spheres=True)
 
-    # Set threshold slightly above 1 to account for numerical errors
-    threshold = 1.1
-
-    # Add RNA polymers
-    #for coords in rna_coords_list:
-    #    if len(coords) >= 2:
-    #        segments = []
-    #        current_segment = [coords[0]]
-    #        for i in range(1, len(coords)):
-    #            prev = coords[i - 1]
-    #            curr = coords[i]
-    #            #dist = minimal_distance(prev, curr, size)
-    #            dist = chebyshev_distance(prev,curr,size)
-    #            if dist < threshold:
-    #                current_segment.append(curr)
-    #            else:
-    #                # Finalize current segment
-    #                if len(current_segment) >= 1:
-    #                    segments.append(np.array(current_segment))
-    #                current_segment = [curr]
-    #        # Add the last segment
-    #        if len(current_segment) >= 1:
-    #            segments.append(np.array(current_segment))
-    #        # Plot all segments
-    #        for segment in segments:
-    #            if len(segment) >= 2:
-    #                lines = pv.lines_from_points(segment)
-    #                plotter.add_mesh(lines, color='blue', line_width=2.0)
-    #    elif len(coords) == 1:
-    #        # Single monomer (will plot as point below)
-    #        pass  # We will plot all monomers as points next
-
-    # Plot all RNA monomers as points on top of the segments
+    # Plot RNA polymers as segments
     for coords in rna_coords_list:
         if coords.size > 0:
+            # Initialize lists to store line segments
+            segments = []
+            num_monomers = coords.shape[0]
+            for i in range(-num_monomers+1,num_monomers - 1):
+                p1 = coords[i]
+                p2 = coords[i + 1]
+
+                # Unwrap positions to account for periodic boundary conditions
+                delta = p2 - p1
+                for dim in range(3):
+                    if delta[dim] > size / 2:
+                        delta[dim] -= size
+                    elif delta[dim] < -size / 2:
+                        delta[dim] += size
+                p2_unwrapped = p1 + delta
+
+                # Check if the segment crosses the boundary
+                if np.any(p2_unwrapped < 0) or np.any(p2_unwrapped > size - 1):
+                    # Clip the segment at the box boundaries
+                    clipped_segment = clip_segment_to_box(p1, p2_unwrapped, size)
+                    if clipped_segment is not None:
+                        segments.append(clipped_segment)
+                else:
+                    # Segment is inside the box, add it directly
+                    segments.append(np.array([p1, p2_unwrapped]))
+            # Plot the segments
+            for segment in segments:
+                line = pv.Line(segment[0], segment[1])
+                plotter.add_mesh(line, color='blue', line_width=2)
+
+            # Also add monomer points
             monomer_points = pv.PolyData(coords)
-            plotter.add_mesh(monomer_points, color='blue', point_size=5.0, render_points_as_spheres=True)
+            plotter.add_mesh(monomer_points, color='blue', point_size=20.0, render_points_as_spheres=True)
 
     # Set plotter options
     plotter.set_background('white')
     plotter.show_axes()
-
+    plotter.show_bounds(
+    grid='front',          # Show grid on the front face
+    location='outer',      # Place labels outside the bounding box
+    all_edges=True,        # Show all edges of the grid
+    xtitle='X Axis',       # Label for the X-axis
+    ytitle='Y Axis',       # Label for the Y-axis
+    ztitle='Z Axis'        # Label for the Z-axis
+    )
     # Optional: Set the camera position
     plotter.view_isometric()
 

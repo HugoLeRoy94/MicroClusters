@@ -51,8 +51,28 @@ void MC::generate_polymers(int npolymers, int lpolymer) {
 }
 
 void MC::generate_particles(int nparticles) {
-    auto particle_indices = box.generate_unique_indices(nparticles);
-    for (const auto& idx : particle_indices) {
+    std::vector<int> empty_indices;
+    int total_sites = box.size * box.size * box.size;
+    
+    // Collect all empty lattice indices
+    for (int idx = 0; idx < total_sites; ++idx) {
+        if (box.get_lattice(idx)->isempty()) {
+            empty_indices.push_back(idx);
+        }
+    }
+
+    // Check if there are enough empty sites
+    if (nparticles > empty_indices.size()) {
+        throw std::runtime_error("Not enough empty positions to place all DHH1 particles.");
+    }
+
+    // Shuffle the empty indices
+    static std::mt19937 rng(std::random_device{}());
+    std::shuffle(empty_indices.begin(), empty_indices.end(), rng);
+
+    // Place DHH1 particles in the first nparticles empty indices
+    for (int i = 0; i < nparticles; ++i) {
+        int idx = empty_indices[i];
         box.create_new_DHH1(idx);
     }
 }
