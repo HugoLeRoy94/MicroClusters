@@ -2,6 +2,7 @@
 #ifndef OBJECTS_H
 #define OBJECTS_H
 
+#include "BOX.h"
 #include <tuple>
 #include <vector>
 #include <memory>
@@ -31,7 +32,7 @@ public:
     virtual std::vector<int> get_positions() const;
     virtual void setPosition(int value);
 
-    virtual int get_site_to_exchange(const BOX& box) const;
+    virtual int get_swap_site_candidate(int idx,const BOX& box, std::mt19937& rng) const;
 
     virtual bool isempty() const;
     virtual int Index() const;
@@ -58,15 +59,25 @@ protected:
     RNA(std::vector<int>& monomers_);
     static std::shared_ptr<RNA> make_shared_ptr(std::vector<int>& monomers_);
     bool isconnected(int idx, const BOX& box) const;
-    bool would_be_connected_after_move(int idx, int new_pos, int L) const;
-    //virtual int get_site_to_exchange(const BOX& box) const override;
+    bool would_be_connected_after_move(int idx, int new_pos, int L) const;    
+    virtual int get_swap_site_candidate(int idx, const BOX& box, std::mt19937& rng) const override;
     std::vector<int> monomers;
     int get_monomer_index(int position) const;
 
 public:
     virtual ~RNA();
     virtual int Index() const override;
-    virtual float compute_local_energy(const BOX& box) const override;
+    inline float compute_local_energy(const BOX& box) const override{
+    float local_energy = 0.0f;
+    for (const auto& idx : monomers) {
+        auto neighbors = box.get_neighbors(idx);
+        for (const auto& nidx : neighbors) {
+            auto neighbor_obj = box.get_lattice(nidx);
+            local_energy -= box.E[Index()][neighbor_obj->Index()];
+        }
+    }
+    return local_energy;
+    }
     //virtual void setPosition(int value) override;
     virtual std::vector<int> get_positions() const override;
 };
@@ -79,8 +90,23 @@ protected:
 public:
     virtual ~DHH1();
     virtual int Index() const override;
-    virtual int get_site_to_exchange(const BOX& box) const override;
-    virtual float compute_local_energy(const BOX& box) const override;
+    virtual int get_swap_site_candidate(int idx,const BOX& box, std::mt19937& rng) const override;
+    inline float compute_local_energy(const BOX& box) const override {
+        auto neighbors = box.get_neighbors(getPosition());
+        float local_energy = 0.0f;
+        bool has_neigh = false;
+        for (const auto& nidx : neighbors) {
+            auto neighbor_obj = box.get_lattice(nidx);
+            local_energy -= box.E[Index()][neighbor_obj->Index()];
+            if (neighbor_obj->Index() == 1) {
+                has_neigh = true;
+            }
+        }
+        if (has_neigh) {
+            local_energy -= box.Evalence;
+        }
+        return local_energy;
+    }
 };
 
 int chebyshev_distance(int pos1, int pos2, int L);

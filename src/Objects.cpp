@@ -29,7 +29,7 @@ std::vector<int> Object::get_positions() const {
 void Object::setPosition(int value) { position = value; }
 bool Object::isempty() const { return false; }
 int Object::Index() const { return 0; }
-int Object::get_site_to_exchange(const BOX& box) const { return position; }
+int Object::get_swap_site_candidate(int site,const BOX& box, std::mt19937& rng) const { return position; }
 
 // Empty Class Implementation
 Empty::Empty(int position_) : Object(position_) {}
@@ -121,24 +121,35 @@ int RNA::get_monomer_index(int position) const {
     }
 }
 
-float RNA::compute_local_energy(const BOX& box) const {
-    float local_energy = 0.0f;
-    for (const auto& idx : monomers) {
-        auto neighbors = box.get_neighbors(idx);
-        for (const auto& nidx : neighbors) {
-            auto neighbor_obj = box.get_lattice(nidx);
-            local_energy -= box.E[Index()][neighbor_obj->Index()];
-        }
-    }
-    return local_energy;
-}
 
 std::vector<int> RNA::get_positions() const {
     return monomers;
 }
 
+int RNA::get_swap_site_candidate(int site, const BOX& box, std::mt19937& rng) const {
+    // Get neighbors of the site
+    std::vector<int> neighbors = box.get_neighbors(site);
+
+    // Initialize RNG
+    //static std::mt19937 rng(std::random_device{}());
+
+    // Randomly shuffle the neighbors
+    std::shuffle(neighbors.begin(), neighbors.end(), rng);
+
+    // Iterate over neighbors to find a valid candidate
+    for (const auto& neighbor_idx : neighbors) {
+        auto neighbor_obj = box.get_lattice(neighbor_idx);
+        if (neighbor_obj.get() != this) {
+            return neighbor_idx;
+        }
+    }
+
+    // If no valid candidate is found
+    return -1;
+}
+
 // DHH1 Class Implementation
-DHH1::DHH1(int position_) : Object(position_) {}
+DHH1::DHH1(int position_) : Object(position_){}
 
 std::shared_ptr<DHH1> DHH1::make_shared_ptr(int position_){
     return std::make_shared<concrete_DHH1>(position_);
@@ -146,32 +157,33 @@ std::shared_ptr<DHH1> DHH1::make_shared_ptr(int position_){
 DHH1::~DHH1() {}
 int DHH1::Index() const { return 1; }
 
-int DHH1::get_site_to_exchange(const BOX& box) const {
-    static std::mt19937 rng(std::random_device{}());
-    std::uniform_int_distribution<int> dist(0, box.size * box.size * box.size - 1);
-
+int DHH1::get_swap_site_candidate(int site, const BOX& box, std::mt19937& rng) const {
+    // Initialize RNG
+    //static std::mt19937 rng(std::random_device{}());
+    std::uniform_int_distribution<int> dist(0, box.lattice.size() - 1);
     int idx;
     do {
         idx = dist(rng);
-    } while (idx == position);
+    } while (idx == site);
 
     return idx;
 }
-float DHH1::compute_local_energy(const BOX& box) const {
+
+/*inline float DHH1::compute_local_energy(const BOX& box) const {
     auto neighbors = box.get_neighbors(position);
     float local_energy = 0.0f;
-    int neigh_count(0);
+    bool has_neigh(false);
     for (const auto& nidx : neighbors) {
         auto neighbor_obj = box.get_lattice(nidx);
         local_energy -= box.E[Index()][neighbor_obj->Index()];
-        if(!neighbor_obj->isempty()){
-            neigh_count+=1;
+        if(neighbor_obj->Index()==1){
+            has_neigh=true;
         }        
     }
-    if(neigh_count>0){local_energy-=box.Evalence;}
+    if(has_neigh){local_energy-=box.Evalence;}
 
     return local_energy;
-}
+}*/
 
 int chebyshev_distance(int pos1, int pos2, int L) {
     int x1, y1, z1;

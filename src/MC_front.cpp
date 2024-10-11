@@ -8,7 +8,7 @@
 extern "C" {
 
 // Function to create a new MC instance.
-MC* MC_new(int size, int nparticles, int npolymers, int lpolymer, const float* interactions_flat, int interactions_size,double Evalence, float temperature) {
+MC* MC_new(int size, int nparticles, int npolymers, int lpolymer, const float* interactions_flat, int interactions_size,double Evalence, float temperature,int seed) {
     // Convert interactions_flat to std::vector<std::vector<float>>
     int n = interactions_size;
     std::vector<std::vector<float>> interactions(n, std::vector<float>(n));
@@ -18,7 +18,7 @@ MC* MC_new(int size, int nparticles, int npolymers, int lpolymer, const float* i
         }
     }
     // Create the MC instance.
-    MC* mc = new MC(size, nparticles, npolymers, lpolymer, interactions,Evalence, temperature);
+    MC* mc = new MC(size, nparticles, npolymers, lpolymer, interactions,Evalence, temperature,seed);
     return mc;
 }
 

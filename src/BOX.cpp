@@ -11,7 +11,7 @@
 #include <stack>
 #include <numeric>
 #include <vector>
-
+/*
 int to_single_index(int x, int y, int z, int L) {
     return x * L * L + y * L + z;
 }
@@ -21,10 +21,12 @@ std::tuple<int, int, int> to_xyz(int index, int L) {
     int y = (index / L) % L;
     int x = index / (L * L);
     return std::make_tuple(x, y, z);
-}
-
-BOX::BOX(int size_, int nobjects, const std::vector<std::vector<float>>& Interactions,double Evalence_)
-    : size(size_), E(Interactions), Evalence(Evalence_){
+}*/
+BOX::BOX(int size_, int nobjects, const std::vector<std::vector<float>>& Interactions,double Evalence_,std::mt19937& rng_)
+    : size(size_), E(Interactions), Evalence(Evalence_), rng(rng_){
+    if (!is_power_of_two(size)){
+        throw std::invalid_argument("Size must be a power of 2 for bitmasking optimization.");
+    }
     int total_sites = size * size * size;
     lattice.resize(total_sites);
 
@@ -59,7 +61,7 @@ std::shared_ptr<RNA> BOX::add_RNA(int length) {
     }
     
     // Initialize RNG   
-    static std::mt19937 rng(std::random_device{}());
+    //static std::mt19937 rng(std::random_device{}());
 
     // Build the polymer
     for (int i = 1; i < length; ++i) {
@@ -116,7 +118,7 @@ void BOX::set_lattice(int index, std::shared_ptr<Object> obj) {
     lattice[index] = obj;
 }
 
-float BOX::compute_local_energy(int index) const {
+inline float BOX::compute_local_energy(int index) const {
     auto obj = get_lattice(index);
     if (obj->isempty()) {
         return 0.0f;
@@ -135,29 +137,32 @@ float BOX::total_energy() const {
     }
     return energy / 2.0f;  // Correct for double counting
 }
-
+    
 std::vector<int> BOX::get_neighbors(int index) const {
     int x, y, z;
-    std::tie(x, y, z) = to_xyz(index, size);
+    std::tie(x, y, z) = to_xyz(index,size);
+    int mask = size - 1;
 
     std::vector<int> neighbors;
     neighbors.reserve(26);
-    for (int dx = -1; dx <=1; ++dx) {
-        for (int dy = -1; dy <=1; ++dy) {
-            for (int dz = -1; dz <=1; ++dz) {
+
+    for (int dx = -1; dx <= 1; ++dx) {
+        int nx = (x + dx) & mask;
+        for (int dy = -1; dy <= 1; ++dy) {
+            int ny = (y + dy) & mask;
+            for (int dz = -1; dz <= 1; ++dz) {
+                int nz = (z + dz) & mask;
                 if (dx == 0 && dy == 0 && dz == 0) {
                     continue;
                 }
-                int nx = (x + dx + size) % size;
-                int ny = (y + dy + size) % size;
-                int nz = (z + dz + size) % size;
-                int neighbor_idx = to_single_index(nx, ny, nz, size);
+                int neighbor_idx = to_single_index(nx, ny, nz,size,compute_n_bits(size));
                 neighbors.push_back(neighbor_idx);
             }
         }
     }
     return neighbors;
 }
+
 
 bool BOX::has_free_neighbor(int index) const {
     auto neighbors = get_neighbors(index);
@@ -183,7 +188,7 @@ std::vector<int> BOX::generate_unique_indices(int N) {
         indices[i] = i;
     }
 
-    static std::mt19937 rng(std::random_device{}());
+    //static std::mt19937 rng(std::random_device{}());
     std::shuffle(indices.begin(), indices.end(), rng);
 
     indices.resize(N);
@@ -191,7 +196,7 @@ std::vector<int> BOX::generate_unique_indices(int N) {
 }
 
 int BOX::random_free_site(){
-    static std::mt19937 rng(std::random_device{}());
+    //static std::mt19937 rng(std::random_device{}());
     while(true){
         std::uniform_int_distribution<int> dist(0, lattice.size() - 1);
         int idx = dist(rng);

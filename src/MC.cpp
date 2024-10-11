@@ -5,12 +5,24 @@
 #include <stdexcept>
 #include <iostream>
 
-MC::MC(int size, int nparticles_, int npolymers_, int lpolymer_, const std::vector<std::vector<float>>& interactions,double Evalence_, float temperature)
-    : nparticles(nparticles_), npolymers(npolymers_), lpolymer(lpolymer_), E(interactions), T(temperature), box(size, nparticles_ + npolymers_, interactions,Evalence_) {
+MC::MC(int size, int nparticles_, int npolymers_, int lpolymer_, const std::vector<std::vector<float>>& interactions,double Evalence_, float temperature, int seed)
+    : nparticles(nparticles_), npolymers(npolymers_), lpolymer(lpolymer_), E(interactions), T(temperature), box(size, nparticles_ + npolymers_, interactions,Evalence_,rng) {        
+    rng.seed(seed);
     generate_polymers(npolymers, lpolymer);
     std::cout<<"polymer successfully generated"<<std::endl;
     generate_particles(nparticles);
     std::cout<<"particles successfully added"<<std::endl;
+
+    // Adjust the weight to make the probability of picking a polymer proportional to its length    
+    weights.resize(box.objects.size());
+    for (size_t i = 0; i < box.objects.size(); ++i) {
+        if (i < static_cast<size_t>(npolymers)) {
+            weights[i] = lpolymer;
+        } else {
+            weights[i] = 1;
+        }
+    }
+    dist = std::discrete_distribution<int>(weights.begin(), weights.end());
 }
 // Function to get positions of all DHH1 particles
 std::vector<int> MC::get_DHH1_positions() const {
@@ -67,7 +79,7 @@ void MC::generate_particles(int nparticles) {
     }
 
     // Shuffle the empty indices
-    static std::mt19937 rng(std::random_device{}());
+    //static std::mt19937 rng(std::random_device{}());
     std::shuffle(empty_indices.begin(), empty_indices.end(), rng);
 
     // Place DHH1 particles in the first nparticles empty indices
@@ -78,26 +90,15 @@ void MC::generate_particles(int nparticles) {
 }
 
 bool MC::monte_carlo_step() {
-    static std::mt19937 rng(std::random_device{}());
+    //static std::mt19937 rng(std::random_device{}());
 
-    // Adjust the weight to make the probability of picking a polymer proportional to its length
-    std::vector<int> weights(box.objects.size());
-    for (size_t i = 0; i < box.objects.size(); ++i) {
-        if (i < static_cast<size_t>(npolymers)) {
-            weights[i] = lpolymer;
-        } else {
-            weights[i] = 1;
-        }
-    }
-
-    std::discrete_distribution<int> dist(weights.begin(), weights.end());
+    
 
     int counter = 0;
     while (counter < pow(box.size, 3)){
         counter++;
         int idx = dist(rng);
         auto object1 = box.objects[idx];
-
         // Get positions associated with object1
         std::vector<int> positions = object1->get_positions();
 
@@ -106,11 +107,15 @@ bool MC::monte_carlo_step() {
         int pos_idx = pos_dist(rng);
         int site1 = positions[pos_idx];
 
+        //while(true){
         // Get neighbors of site1
-        std::vector<int> neighbors = box.get_neighbors(site1);
-        std::shuffle(neighbors.begin(), neighbors.end(), rng);
-
-        for (const auto& site2 : neighbors) {
+        // Get a random swap site candidate from object1
+        //# need to find a way to return -1 when the RNA has tried all of tis neighbors.
+        int site2 = object1->get_swap_site_candidate(site1, box,rng);
+        if (site2 == -1) {
+            continue; // No valid candidate found, try again
+        }
+            // start from a random point, and go back the the begining of candidates if the end is crossed
             auto object2 = box.get_lattice(site2);
 
             // Create a move proposal
@@ -141,7 +146,7 @@ bool MC::monte_carlo_step() {
                 return false;  // Move was rejected
             }
             return true;  // Move was accepted
-        }
+        //}
     }
     throw std::out_of_range("No valid move found");
 }

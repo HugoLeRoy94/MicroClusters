@@ -6,7 +6,7 @@ import sys
 import pyvista as pv
 
 class MC:
-    def __init__(self, size, nparticles, npolymers, lpolymer, interactions,Evalence, temperature):
+    def __init__(self, size, nparticles, npolymers, lpolymer, interactions,Evalence, temperature,seed=98765):
         # Load the shared library
         if sys.platform.startswith('win'):
             lib_name = 'mc.dll'
@@ -27,7 +27,8 @@ class MC:
             ctypes.POINTER(ctypes.c_float),  # interactions_flat
             ctypes.c_int,  # interactions_size
             ctypes.c_double, # limited valence interaction
-            ctypes.c_float  # temperature
+            ctypes.c_float,  # temperature
+            ctypes.c_int
         ]
         self.lib.MC_new.restype = ctypes.c_void_p  # Return a pointer to MC
 
@@ -106,7 +107,8 @@ class MC:
             interactions_flat_p,
             n,
             Evalence,
-            temperature
+            temperature,
+            seed
         )
 
     def __del__(self):
@@ -268,6 +270,14 @@ def clip_segment_to_box(p1, p2, size):
 
     return np.array([[x1_clip, y1_clip, z1_clip],[x2_clip, y2_clip, z2_clip]])
 
+def generate_lattice_vertices(size):
+    # Generate all combinations of x, y, z in 0..size-1
+    x = np.arange(size)
+    y = np.arange(size)
+    z = np.arange(size)
+    X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
+    grid_points = np.column_stack((X.ravel(), Y.ravel(), Z.ravel()))
+    return grid_points
 
 def plot_simulation(mc, output_filename='simulation.html'):
     size = mc.size
@@ -283,6 +293,9 @@ def plot_simulation(mc, output_filename='simulation.html'):
         coords = np.array([to_xyz(pos, size) for pos in rna_positions])
         rna_coords_list.append(coords)
 
+    # Generate lattice vertices
+    lattice_vertices = generate_lattice_vertices(size)
+
     # Create a PyVista plotter
     plotter = pv.Plotter()
 
@@ -290,6 +303,10 @@ def plot_simulation(mc, output_filename='simulation.html'):
     box_center = (size / 2 - 0.5, size / 2 - 0.5, size / 2 - 0.5)
     box = pv.Cube(center=box_center, x_length=size, y_length=size, z_length=size)
     plotter.add_mesh(box, color='black', opacity=0.2, style='wireframe', line_width=1)
+
+    # Add lattice vertices as small black dots
+    lattice_points = pv.PolyData(lattice_vertices)
+    plotter.add_mesh(lattice_points, color='black', point_size=2.5, render_points_as_spheres=True)
 
     # Add DHH1 particles as points
     if dhh1_coords.size > 0:

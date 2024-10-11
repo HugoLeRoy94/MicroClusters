@@ -3,7 +3,7 @@
 #include <algorithm>
 
 int main() {
-    int size = 100;
+    int size = 128;
     int nparticles = 100;
     int npolymers = 1;
     int lpolymer = 10;
@@ -17,12 +17,12 @@ int main() {
         {0.0f, 0.0f, 0.0f}
     };
 
-    MC simulation(size, nparticles, npolymers, lpolymer, interactions,Evalence, temperature);
-    //for (int i=0;i<10;i++){
-    //std::cout<<i<<std::endl;
-    //simulation.monte_carlo_steps(pow(10,5));
-//
-    //}
+    MC simulation(size, nparticles, npolymers, lpolymer, interactions,Evalence, temperature,651);
+    for (int i=0;i<10;i++){
+    std::cout<<i<<std::endl;
+    simulation.monte_carlo_steps(pow(10,4));
+
+    }
     // Compute cluster sizes
     //std::vector<int> cluster_sizes = simulation.box.cluster_size();
     //std::cout << "Cluster sizes:\n";
