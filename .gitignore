@@ -3,3 +3,4 @@
 callgrind*
 *.d
 *.o
+*.html
