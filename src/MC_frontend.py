@@ -323,7 +323,10 @@ def plot_simulation(mc, output_filename='simulation.html'):
             # Initialize lists to store line segments
             segments = []
             num_monomers = coords.shape[0]
+            # plot segment from last to first and first to last, for correct boundary conditions reprsentation
             for i in range(-num_monomers+1,num_monomers - 1):
+                if i==-1: #avoid looping segment
+                    pass
                 p1 = coords[i]
                 p2 = coords[i + 1]
 
@@ -348,11 +351,11 @@ def plot_simulation(mc, output_filename='simulation.html'):
             # Plot the segments
             for segment in segments:
                 line = pv.Line(segment[0], segment[1])
-                plotter.add_mesh(line, color='blue', line_width=2)
+                plotter.add_mesh(line, color='blue', line_width=3)
 
             # Also add monomer points
             monomer_points = pv.PolyData(coords)
-            plotter.add_mesh(monomer_points, color='blue', point_size=20.0, render_points_as_spheres=True)
+            plotter.add_mesh(monomer_points, color='blue', point_size=10.0, render_points_as_spheres=True)
 
     # Set plotter options
     plotter.set_background('white')
