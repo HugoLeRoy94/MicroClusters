@@ -1,6 +1,8 @@
 // BOX.cpp
 #include "BOX.h"
+#include "ComputeLocalEnergy.h"
 #include "Objects.h"
+#include "Utilities.h"
 #include <stdexcept>
 #include <random>
 #include <algorithm>
@@ -118,14 +120,14 @@ void BOX::set_lattice(int index, std::shared_ptr<Object> obj) {
     lattice[index] = obj;
 }
 
-inline float BOX::compute_local_energy(int index) const {
+/*inline float BOX::compute_local_energy(int index) const {
     auto obj = get_lattice(index);
     if (obj->isempty()) {
         return 0.0f;
     }
 
     return obj->compute_local_energy(*this);
-}
+}*/
 
 float BOX::total_energy() const {
     float energy = 0.0f;
@@ -136,31 +138,6 @@ float BOX::total_energy() const {
         }
     }
     return energy / 2.0f;  // Correct for double counting
-}
-    
-std::vector<int> BOX::get_neighbors(int index) const {
-    int x, y, z;
-    std::tie(x, y, z) = to_xyz(index,size);
-    int mask = size - 1;
-
-    std::vector<int> neighbors;
-    neighbors.reserve(26);
-
-    for (int dx = -1; dx <= 1; ++dx) {
-        int nx = (x + dx) & mask;
-        for (int dy = -1; dy <= 1; ++dy) {
-            int ny = (y + dy) & mask;
-            for (int dz = -1; dz <= 1; ++dz) {
-                int nz = (z + dz) & mask;
-                if (dx == 0 && dy == 0 && dz == 0) {
-                    continue;
-                }
-                int neighbor_idx = to_single_index(nx, ny, nz,size,compute_n_bits(size));
-                neighbors.push_back(neighbor_idx);
-            }
-        }
-    }
-    return neighbors;
 }
 
 

@@ -2,7 +2,7 @@
 
 # Compiler and flags
 CC = g++
-CFLAGS = -std=c++17 -O3 -MMD -MP -g
+CFLAGS = -std=c++17 -O3 -MMD -MP
 SHARED_CFLAGS = $(CFLAGS) -fPIC
 LDFLAGS = -shared
 

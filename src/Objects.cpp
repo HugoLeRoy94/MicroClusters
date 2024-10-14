@@ -1,6 +1,8 @@
 // Objects.cpp
+#include "Utilities.h"
 #include "Objects.h"
 #include "BOX.h"
+#include "ComputeLocalEnergy.h"
 #include <random>
 #include <stdexcept>
 
@@ -40,10 +42,6 @@ std::shared_ptr<Empty> Empty::make_shared_ptr(int position_){
 Empty::~Empty() {}
 bool Empty::isempty() const { return true; }
 int Empty::Index() const { return 0; }
-float Empty::compute_local_energy(const BOX& box) const {
-    // Empty objects have zero energy
-    return 0.0f;
-}
 
 // RNA Class Implementation
 RNA::RNA(std::vector<int>& monomers_)
@@ -183,7 +181,7 @@ int DHH1::get_swap_site_candidate(int site, const BOX& box, std::mt19937& rng) c
     if(has_neigh){local_energy-=box.Evalence;}
 
     return local_energy;
-}*/
+}
 
 int chebyshev_distance(int pos1, int pos2, int L) {
     int x1, y1, z1;
@@ -202,3 +200,4 @@ int chebyshev_distance(int pos1, int pos2, int L) {
 
     return std::max({dx, dy, dz});
 }
+*/

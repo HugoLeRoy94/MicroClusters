@@ -4,23 +4,23 @@
 
 int main() {
     int size = 128;
-    int nparticles = 100;
-    int npolymers = 1;
-    int lpolymer = 10;
+    int nparticles = 210;
+    int npolymers = 0;
+    int lpolymer = 0;
     float temperature = 0.1f;
-    double Evalence=2.5;
+    double Evalence=0;
 
     // Define interaction matrix E (3x3 matrix for example)
     std::vector<std::vector<float>> interactions = {
         {0.0f, 0.0f, 0.0f},
-        {0.0f, 0.0f, 0.0f},
+        {0.0f, 2.5f, 0.0f},
         {0.0f, 0.0f, 0.0f}
     };
 
     MC simulation(size, nparticles, npolymers, lpolymer, interactions,Evalence, temperature,651);
     for (int i=0;i<10;i++){
     std::cout<<i<<std::endl;
-    simulation.monte_carlo_steps(pow(10,4));
+    simulation.monte_carlo_steps(pow(10,6));
 
     }
     // Compute cluster sizes

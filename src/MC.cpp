@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <iostream>
+#include "ComputeLocalEnergy.h"
 
 MC::MC(int size, int nparticles_, int npolymers_, int lpolymer_, const std::vector<std::vector<float>>& interactions,double Evalence_, float temperature, int seed)
     : nparticles(nparticles_), npolymers(npolymers_), lpolymer(lpolymer_), E(interactions), T(temperature), box(size, nparticles_ + npolymers_, interactions,Evalence_,rng) {        

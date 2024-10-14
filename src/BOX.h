@@ -6,7 +6,6 @@
 #include <tuple>
 #include <memory>
 #include <random>
-//#include "Objects.h"
 
 class Object;
 class RNA;
@@ -28,13 +27,14 @@ public:
     std::shared_ptr<Object> get_lattice(int index) const;
     void set_lattice(int index, std::shared_ptr<Object> obj);
     void swap(int idx1, int idx2);
-    inline float compute_local_energy(int index) const {
+    float compute_local_energy(int index) const;
+    /*inline float compute_local_energy(int index) const {
         auto obj = get_lattice(index);
         if (obj->isempty()) {
             return 0.0f;
         }
         return obj->compute_local_energy(*this);
-    }
+    }*/
     float total_energy() const;
     std::vector<int> get_neighbors(int index) const;
     bool has_free_neighbor(int index) const;
@@ -69,6 +69,7 @@ private:
     int random_free_site();
     std::mt19937& rng;  // Reference to the RNG from MC
 };
+/*
 inline int compute_n_bits(int size) {
     int n_bits = 0;
     int temp_size = size;
@@ -92,9 +93,5 @@ inline std::tuple<int, int, int> to_xyz(int index, int size) {
     int y = (index >> n_bits) & mask;
     int z = index & mask;
     return std::make_tuple(x, y, z);
-}
-
-//int to_single_index(int x, int y, int z, int L);
-//std::tuple<int, int, int> to_xyz(int index, int L);
-//int compute_n_bits(int size);
+}*/
 #endif // BOX_H

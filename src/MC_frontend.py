@@ -4,9 +4,13 @@ import numpy as np
 import os
 import sys
 import pyvista as pv
+def is_power_of_two(n):
+    return n > 0 and (n & (n - 1)) == 0
 
 class MC:
     def __init__(self, size, nparticles, npolymers, lpolymer, interactions,Evalence, temperature,seed=98765):
+        if not is_power_of_two(size):
+            raise ValueError("Size must be a power of 2.")
         # Load the shared library
         if sys.platform.startswith('win'):
             lib_name = 'mc.dll'
@@ -305,8 +309,8 @@ def plot_simulation(mc, output_filename='simulation.html'):
     plotter.add_mesh(box, color='black', opacity=0.2, style='wireframe', line_width=1)
 
     # Add lattice vertices as small black dots
-    lattice_points = pv.PolyData(lattice_vertices)
-    plotter.add_mesh(lattice_points, color='black', point_size=2.5, render_points_as_spheres=True)
+    #lattice_points = pv.PolyData(lattice_vertices)
+    #plotter.add_mesh(lattice_points, color='black', point_size=2.5, render_points_as_spheres=True)
 
     # Add DHH1 particles as points
     if dhh1_coords.size > 0:

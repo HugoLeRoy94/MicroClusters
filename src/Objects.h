@@ -2,12 +2,12 @@
 #ifndef OBJECTS_H
 #define OBJECTS_H
 
-#include "BOX.h"
 #include <tuple>
 #include <vector>
 #include <memory>
 #include <algorithm>  // for std::shuffle
 #include <random>
+#include "Utilities.h"
 
 
 
@@ -67,7 +67,8 @@ protected:
 public:
     virtual ~RNA();
     virtual int Index() const override;
-    inline float compute_local_energy(const BOX& box) const override{
+    virtual float compute_local_energy(const BOX& box) const override;
+    /*inline float compute_local_energy(const BOX& box) const override{
     float local_energy = 0.0f;
     for (const auto& idx : monomers) {
         auto neighbors = box.get_neighbors(idx);
@@ -77,7 +78,7 @@ public:
         }
     }
     return local_energy;
-    }
+    }*/
     //virtual void setPosition(int value) override;
     virtual std::vector<int> get_positions() const override;
 };
@@ -91,7 +92,8 @@ public:
     virtual ~DHH1();
     virtual int Index() const override;
     virtual int get_swap_site_candidate(int idx,const BOX& box, std::mt19937& rng) const override;
-    inline float compute_local_energy(const BOX& box) const override {
+    virtual float compute_local_energy(const BOX& box) const override;
+    /*inline float compute_local_energy(const BOX& box) const override {
         auto neighbors = box.get_neighbors(getPosition());
         float local_energy = 0.0f;
         bool has_neigh = false;
@@ -106,9 +108,7 @@ public:
             local_energy -= box.Evalence;
         }
         return local_energy;
-    }
+    }*/
 };
-
-int chebyshev_distance(int pos1, int pos2, int L);
 
 #endif // OBJECTS_H
