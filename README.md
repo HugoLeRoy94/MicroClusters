@@ -52,8 +52,8 @@ To use the simulation from Python, you need to compile the C++ code into a share
 1. **Clone the Repository**:
 
    ```bash
-   git clone https://github.com/yourusername/monte-carlo-simulation.git
-   cd monte-carlo-simulation
+   git clone https://github.com/HugoLeRoy94/MicroClusters.git
+   cd MicroClusters
    ```
 
 2. **Organize the Files**:
@@ -68,7 +68,7 @@ To use the simulation from Python, you need to compile the C++ code into a share
    - `Objects.cpp`
    - `Move.h`
    - `Move.cpp`
-   - `MC_wrapper.cpp`
+   - `MC_front.cpp`
    - `MC.py`
 
 3. **Compile the Shared Library**:
@@ -78,19 +78,19 @@ To use the simulation from Python, you need to compile the C++ code into a share
    - **Linux**:
 
      ```bash
-     g++ -shared -fPIC -std=c++11 MC.cpp BOX.cpp Objects.cpp Move.cpp MC_wrapper.cpp -o libmc.so
+     make
      ```
 
    - **macOS**:
 
      ```bash
-     g++ -shared -dynamiclib -std=c++11 MC.cpp BOX.cpp Objects.cpp Move.cpp MC_wrapper.cpp -o libmc.dylib
+     g++ -shared -dynamiclib -std=c++11 MC.cpp BOX.cpp Objects.cpp Move.cpp MC_front.cpp -o libmc.dylib
      ```
 
    - **Windows**:
 
      ```bash
-     g++ -shared -std=c++11 MC.cpp BOX.cpp Objects.cpp Move.cpp MC_wrapper.cpp -o mc.dll
+     g++ -shared -std=c++11 MC.cpp BOX.cpp Objects.cpp Move.cpp MC_front.cpp -o mc.dll
      ```
 
    Ensure that you have `g++` installed and accessible from your command line. You might need to adjust the compiler flags based on your environment.
@@ -126,7 +126,7 @@ The Python interface allows you to use the simulation conveniently within Python
 Import the `MC` class from `MC.py` in your Python script:
 
 ```python
-from MC import MC
+from MC_front import MC
 ```
 
 ## Examples
@@ -145,8 +145,8 @@ from MC import MC
 #### 2. **Define Simulation Parameters**:
 
 ```python
-# Lattice size
-size = 50
+# Lattice size must be a power of 2
+size = 32
 
 # Number of particles and polymers
 nparticles = 100
@@ -154,24 +154,25 @@ npolymers = 50
 lpolymer = 10  # Length of each polymer
 
 # Interaction matrix (example with 3 object types: Empty, DHH1, RNA)
+# Positive interaction value corresponds to attractive force
 # The matrix should be symmetric with zero interaction for Empty (index 0)
 interactions = [
     [0.0, 0.0, 0.0],    # Interactions with Empty
-    [0.0, -1.0, -0.5],  # Interactions for DHH1 (index 1)
-    [0.0, -0.5, -1.0]   # Interactions for RNA (index 2)
+    [0.0, 1.0, 0.],  # Interactions for DHH1 (index 1)
+    [0.0, 0, 1.0]   # Interactions for RNA (index 2)
 ]
 
 # Valence energy (additional energy term)
 Evalence = -0.3
 
-# Temperature
+# Temperature set the energy unit
 temperature = 1.0
 ```
 
 #### 3. **Initialize the Simulation**:
 
 ```python
-mc = MC(size, nparticles, npolymers, lpolymer, interactions, Evalence, temperature)
+mc = MC(size, nparticles, npolymers, lpolymer, interactions, Evalence, temperature, seed)
 ```
 
 #### 4. **Perform Monte Carlo Steps**:
@@ -181,8 +182,7 @@ mc = MC(size, nparticles, npolymers, lpolymer, interactions, Evalence, temperatu
 steps = 1000
 
 # Run the simulation
-for _ in range(steps):
-    mc.monte_carlo_step()
+mc.monte_carlo_steps(steps)
 ```
 
 #### 5. **Retrieve Results**:
@@ -198,6 +198,9 @@ print(f"Average Cluster Size: {avg_cluster_size}")
 
 # Get cluster details
 indices_array, starts_array = mc.get_clusters()
+# instead of making a list of list, clusters are represented as a single list,
+# and a list of start indices.
+# indices_array gives the position of the particles
 print(f"Cluster Indices: {indices_array}")
 print(f"Cluster Starts: {starts_array}")
 
@@ -241,6 +244,7 @@ MC(size, nparticles, npolymers, lpolymer, interactions, Evalence, temperature)
   - `interactions` (list of lists): Interaction matrix between different object types.
   - `Evalence` (float): Valence energy term.
   - `temperature` (float): Temperature of the system.
+  - `seed` (int): seed to make reproducible simulations
 
 #### Methods
 

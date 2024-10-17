@@ -8,7 +8,7 @@ def is_power_of_two(n):
     return n > 0 and (n & (n - 1)) == 0
 
 class MC:
-    def __init__(self, size, nparticles, npolymers, lpolymer, interactions,Evalence, temperature,seed=98765):
+    def __init__(self, size, nparticles, npolymers, lpolymer, interactions,Evalence, temperature=1.,seed=98765):
         if not is_power_of_two(size):
             raise ValueError("Size must be a power of 2.")
         # Load the shared library
@@ -136,18 +136,22 @@ class MC:
     def total_energy(self):
         energy = self.lib.MC_total_energy(self.Address)
         return energy    
+    
     def average_cluster_size(self):
         """Returns the average cluster size in the box."""
         return self.lib.MC_average_cluster_size(self.Address)  
+    
     def get_cluster_indices_size(self):
         size = self.lib.MC_get_cluster_indices_size(self.Address)
         if size < 0:
             raise ValueError("Error getting cluster indices size")
         return size
+    
     def get_cluster_size(self):
         indices_array,starts_array = self.get_clusters()
         starts_array = np.append(starts_array,indices_array.shape[0])
         return np.diff(starts_array)
+    
     def get_cluster_starts_size(self):
         size = self.lib.MC_get_cluster_starts_size(self.Address)
         if size < 0:
@@ -181,8 +185,10 @@ class MC:
             raise ValueError("Error filling cluster starts")
 
         return indices_array, starts_array
+    
     def get_energy(self):
         return self.lib.MC_get_energy(self.Address)
+    
     def get_DHH1_positions(self):
         positions_array = np.zeros(self.nparticles, dtype=np.int32)
         positions_ptr = positions_array.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
