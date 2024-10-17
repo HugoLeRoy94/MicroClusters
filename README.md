@@ -111,10 +111,10 @@ The Python interface allows you to use the simulation conveniently within Python
 
 2. **Install Dependencies**:
 
-   Install NumPy if you haven't already:
+   make sure that the modules in requirements.txt are all installed
 
    ```bash
-   pip install numpy
+   pip install -r requirements.txt
    ```
 
 3. **Set Up Environment Variables** (Optional):
