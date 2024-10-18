@@ -19,8 +19,15 @@ class MC:
         else:
             lib_name = 'libmc.so'
 
-        lib_path = os.path.abspath(lib_name)
+        # Get the directory where the current script is located
+        lib_dir = os.path.dirname(os.path.abspath(__file__))
+
+        # Build the full path to the library
+        lib_path = os.path.join(lib_dir, lib_name)
+
+        # Load the shared library
         self.lib = ctypes.CDLL(lib_path)
+
         
         # Define the argument and return types of the functions
         self.lib.MC_new.argtypes = [

@@ -26,7 +26,6 @@ public:
     std::shared_ptr<RNA> add_RNA(int length);
     std::shared_ptr<Object> get_lattice(int index) const;
     void set_lattice(int index, std::shared_ptr<Object> obj);
-    void swap(int idx1, int idx2);
     float compute_local_energy(int index) const;
     /*inline float compute_local_energy(int index) const {
         auto obj = get_lattice(index);

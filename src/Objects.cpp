@@ -5,19 +5,7 @@
 #include "ComputeLocalEnergy.h"
 #include <random>
 #include <stdexcept>
-
-
-namespace{
-    struct concrete_DHH1: public DHH1{
-        concrete_DHH1(int position_): DHH1(position_){}
-    };
-    struct concrete_RNA: public RNA{
-        concrete_RNA(std::vector<int>positions_):RNA(positions_){}
-    };
-    struct concrete_Empty: public Empty{
-        concrete_Empty(int position_): Empty(position_){}
-    };
-}
+#include <vector>
 
 
 // Object Class Implementation
@@ -28,29 +16,27 @@ int Object::getPosition() const { return position; }
 std::vector<int> Object::get_positions() const {
     return {getPosition()};
 }
-void Object::setPosition(int value) { position = value; }
+void Object::setPosition(int old_pos, int new_pos) { position = new_pos; }
 bool Object::isempty() const { return false; }
 int Object::Index() const { return 0; }
-int Object::get_swap_site_candidate(int site,const BOX& box, std::mt19937& rng) const { return position; }
 
 // Empty Class Implementation
 Empty::Empty(int position_) : Object(position_) {}
 
-std::shared_ptr<Empty> Empty::make_shared_ptr(int position_){
-    return std::make_shared<concrete_Empty>(position_);
-}
 Empty::~Empty() {}
 bool Empty::isempty() const { return true; }
 int Empty::Index() const { return 0; }
-
+void Empty::get_swap_site_candidate(std::vector<std::shared_ptr<Object>>& object1,
+                                std::vector<std::shared_ptr<Object>>& object2,
+                                std::vector<int>& sites1,
+                                std::vector<int>& sites2,
+                                 const BOX& box, std::mt19937& rng){return;}
+bool Empty::would_be_connected_after_move(int idx, int new_pos, int L) const {return true;}
+int Empty   ::get_monomer_index(int site) const{return 0;};
 // RNA Class Implementation
 RNA::RNA(std::vector<int>& monomers_)
     : Object(monomers_[0]) {
         monomers = monomers_;
-}
-
-std::shared_ptr<RNA> RNA::make_shared_ptr(std::vector<int>& monomers_){
-    return std::make_shared<concrete_RNA>(monomers_);
 }
 
 RNA::~RNA() {}
@@ -124,80 +110,63 @@ std::vector<int> RNA::get_positions() const {
     return monomers;
 }
 
-int RNA::get_swap_site_candidate(int site, const BOX& box, std::mt19937& rng) const {
+void RNA::setPosition(int old_pos, int new_pos){
+    int idx1 = get_monomer_index(old_pos);
+            if (idx1 != -1) {
+                monomers[idx1] = new_pos;
+            }
+}
+
+void RNA::get_swap_site_candidate(std::vector<std::shared_ptr<Object>>& object1,
+                                std::vector<std::shared_ptr<Object>>& object2,
+                                std::vector<int>& sites1,
+                                std::vector<int>& sites2,
+                                 const BOX& box, std::mt19937& rng) {    
+    // single monomer move
     // Get neighbors of the site
-    std::vector<int> neighbors = box.get_neighbors(site);
+    object1.push_back(shared_from_this());
+    // select a random site
+    std::uniform_int_distribution<int> pos_dist(0, monomers.size() - 1);
+    int pos_idx = pos_dist(rng);
+    sites1.push_back(monomers[pos_idx]);
 
-    // Initialize RNG
-    //static std::mt19937 rng(std::random_device{}());
-
+    std::vector<int> neighbors = box.get_neighbors(monomers[pos_idx]);    
     // Randomly shuffle the neighbors
     std::shuffle(neighbors.begin(), neighbors.end(), rng);
-
     // Iterate over neighbors to find a valid candidate
     for (const auto& neighbor_idx : neighbors) {
         auto neighbor_obj = box.get_lattice(neighbor_idx);
         if (neighbor_obj.get() != this) {
-            return neighbor_idx;
+            sites2.push_back(neighbor_idx);
+            object2.push_back(neighbor_obj);
         }
-    }
-
-    // If no valid candidate is found
-    return -1;
+    }    
 }
 
 // DHH1 Class Implementation
 DHH1::DHH1(int position_) : Object(position_){}
 
-std::shared_ptr<DHH1> DHH1::make_shared_ptr(int position_){
-    return std::make_shared<concrete_DHH1>(position_);
-}
 DHH1::~DHH1() {}
 int DHH1::Index() const { return 1; }
 
-int DHH1::get_swap_site_candidate(int site, const BOX& box, std::mt19937& rng) const {
+void DHH1::get_swap_site_candidate(std::vector<std::shared_ptr<Object>>& object1,
+                                    std::vector<std::shared_ptr<Object>>& object2,
+                                    std::vector<int>& sites1,
+                                    std::vector<int>& sites2, const BOX& box, std::mt19937& rng){
+    object1.push_back(shared_from_this());
+    sites1.push_back(position);
     // Initialize RNG
     //static std::mt19937 rng(std::random_device{}());
     std::uniform_int_distribution<int> dist(0, box.lattice.size() - 1);
     int idx;
     do {
         idx = dist(rng);
-    } while (idx == site);
-
-    return idx;
+    } while (idx == position);
+    sites2.push_back(idx);
+    object2.push_back(box.get_lattice(idx));
 }
 
-/*inline float DHH1::compute_local_energy(const BOX& box) const {
-    auto neighbors = box.get_neighbors(position);
-    float local_energy = 0.0f;
-    bool has_neigh(false);
-    for (const auto& nidx : neighbors) {
-        auto neighbor_obj = box.get_lattice(nidx);
-        local_energy -= box.E[Index()][neighbor_obj->Index()];
-        if(neighbor_obj->Index()==1){
-            has_neigh=true;
-        }        
-    }
-    if(has_neigh){local_energy-=box.Evalence;}
 
-    return local_energy;
-}
+bool DHH1::would_be_connected_after_move(int idx, int new_pos, int L) const {return true;}
 
-int chebyshev_distance(int pos1, int pos2, int L) {
-    int x1, y1, z1;
-    std::tie(x1, y1, z1) = to_xyz(pos1, L);
-    int x2, y2, z2;
-    std::tie(x2, y2, z2) = to_xyz(pos2, L);
-
-    int dx = std::abs(x1 - x2);
-    int dy = std::abs(y1 - y2);
-    int dz = std::abs(z1 - z2);
-
-    // Account for periodic boundary conditions
-    dx = std::min(dx, L - dx);
-    dy = std::min(dy, L - dy);
-    dz = std::min(dz, L - dz);
-
-    return std::max({dx, dy, dz});
-}
-*/
+int DHH1::get_monomer_index(int site) const{return 0;};

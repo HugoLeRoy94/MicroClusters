@@ -93,48 +93,57 @@ void MC::generate_particles(int nparticles) {
 bool MC::monte_carlo_step() {
     //static std::mt19937 rng(std::random_device{}());
 
-    
-
     int counter = 0;
     while (counter < pow(box.size, 3)){
         counter++;
         int idx = dist(rng);
-        auto object1 = box.objects[idx];
-        // Get positions associated with object1
+        auto object1 = box.objects[idx];        
         std::vector<int> positions = object1->get_positions();
 
         // Randomly select one of the positions
-        std::uniform_int_distribution<int> pos_dist(0, positions.size() - 1);
-        int pos_idx = pos_dist(rng);
-        int site1 = positions[pos_idx];
+        //std::uniform_int_distribution<int> pos_dist(0, positions.size() - 1);
+        //int pos_idx = pos_dist(rng);
+        //int site1 = positions[pos_idx];
 
-        //while(true){
-        // Get neighbors of site1
-        // Get a random swap site candidate from object1
-        //# need to find a way to return -1 when the RNA has tried all of tis neighbors.
-        int site2 = object1->get_swap_site_candidate(site1, box,rng);
-        if (site2 == -1) {
+        std::vector<std::shared_ptr<Object>> objects1;
+        std::vector<std::shared_ptr<Object>> objects2;
+        std::vector<int> sites1;        
+        std::vector<int> sites2;        
+
+        object1->get_swap_site_candidate(objects1,objects2, sites1,sites2, box, rng);
+        if (sites2.back() == -1) {
+            for(auto it : sites2){
+                std::cout<<it<<std::endl;
+            }
+            for(auto it : sites1){
+                std::cout<<it<<std::endl;
+            }
             continue; // No valid candidate found, try again
         }
-            // start from a random point, and go back the the begining of candidates if the end is crossed
-            auto object2 = box.get_lattice(site2);
 
             // Create a move proposal
-            Move move(object1, site1, object2, site2, MoveType::Swap);
+            Move move(objects1, objects2,sites1, sites2);
 
             // Validate the move
             if (!move.validate(box)) {
+                std::cout<<"move invalidate"<<std::endl;
                 continue;
-            }
-
+            }            
             // Compute energy before the move
-            float initial_energy = box.compute_local_energy(site1) + box.compute_local_energy(site2);
+            float initial_energy(0);
+            for( int i = 0; i<sites1.size();i++){
+                initial_energy += box.compute_local_energy(sites1[i]) + box.compute_local_energy(sites2[i]);
+            }
 
             // Apply the move
             move.apply(box);
 
+
             // Compute energy after the move
-            float final_energy = box.compute_local_energy(site1) + box.compute_local_energy(site2);
+            float final_energy(0);
+            for( int i = 0; i<sites1.size();i++){
+                final_energy += box.compute_local_energy(sites1[i]) + box.compute_local_energy(sites2[i]);
+            }
 
             // Calculate energy difference
             float delta_e = final_energy - initial_energy;
@@ -151,7 +160,6 @@ bool MC::monte_carlo_step() {
     }
     throw std::out_of_range("No valid move found");
 }
-
 
 std::vector<bool> MC::monte_carlo_steps(int steps) {
     std::vector<bool> success(steps);

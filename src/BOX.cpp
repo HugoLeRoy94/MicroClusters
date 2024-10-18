@@ -13,17 +13,7 @@
 #include <stack>
 #include <numeric>
 #include <vector>
-/*
-int to_single_index(int x, int y, int z, int L) {
-    return x * L * L + y * L + z;
-}
 
-std::tuple<int, int, int> to_xyz(int index, int L) {
-    int z = index % L;
-    int y = (index / L) % L;
-    int x = index / (L * L);
-    return std::make_tuple(x, y, z);
-}*/
 BOX::BOX(int size_, int nobjects, const std::vector<std::vector<float>>& Interactions,double Evalence_,std::mt19937& rng_)
     : size(size_), E(Interactions), Evalence(Evalence_), rng(rng_){
     if (!is_power_of_two(size)){
@@ -34,7 +24,7 @@ BOX::BOX(int size_, int nobjects, const std::vector<std::vector<float>>& Interac
 
     // Initialize lattice with Empty objects
     for (int idx = 0; idx < total_sites; ++idx) {
-        lattice[idx] = Empty::make_shared_ptr(idx);
+        lattice[idx] = std::make_shared<Empty>(idx);
     }
 
     // Initialize objects array
@@ -42,7 +32,7 @@ BOX::BOX(int size_, int nobjects, const std::vector<std::vector<float>>& Interac
 }
 
 void BOX::create_new_DHH1(int index){
-    auto new_dhh1 = DHH1::make_shared_ptr(index);
+    auto new_dhh1 = std::make_shared<DHH1>(index);
     lattice[index] = new_dhh1;
     objects.push_back(new_dhh1);
 }
@@ -83,7 +73,7 @@ std::shared_ptr<RNA> BOX::add_RNA(int length) {
         if (!found) {
             // Dead end encountered; clean up and throw an exception
             for (const auto& monomer_idx : monomers) {
-                lattice[monomer_idx] = Empty::make_shared_ptr(monomer_idx);
+                lattice[monomer_idx] = std::make_shared<Empty>(monomer_idx);
             }
             throw std::runtime_error("Unable to place RNA polymer due to dead end");
         }
@@ -91,7 +81,7 @@ std::shared_ptr<RNA> BOX::add_RNA(int length) {
 
     // At this point, the monomer positions are determined
     // Now, create the RNA object
-    auto rna = RNA::make_shared_ptr(monomers);
+    auto rna = std::make_shared<RNA>(monomers);
     objects.push_back(rna);
 
     // Update the lattice with the RNA object
@@ -100,16 +90,6 @@ std::shared_ptr<RNA> BOX::add_RNA(int length) {
     }
 
     return rna;
-}
-
-void BOX::swap(int idx1, int idx2) {
-    std::swap(lattice[idx1], lattice[idx2]);
-
-    // Update the positions of the objects
-    lattice[idx1]->setPosition(idx1);
-    lattice[idx2]->setPosition(idx2);
-
-    clusters_valid = false; // Invalidate cluster data
 }
 
 std::shared_ptr<Object> BOX::get_lattice(int index) const {
