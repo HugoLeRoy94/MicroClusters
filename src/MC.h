@@ -30,7 +30,7 @@ public:
     private:
         std::vector<int> weights;
         std::mt19937 rng;
-        std::discrete_distribution<int> dist;
+        std::uniform_int_distribution<int> dist;
 };
 
 #endif // MC_H

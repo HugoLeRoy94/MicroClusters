@@ -5,7 +5,7 @@
 #include <tuple>
 #include <stdexcept>
 #include <algorithm>
-
+#include <iostream>
 
 // Utility functions
 
@@ -40,7 +40,11 @@ inline std::tuple<int, int, int> to_xyz(int index, int size) {
     int z = index & mask;
     return std::make_tuple(x, y, z);
 }
-
+inline void print_xyz(int indx,int size){
+    int x,y,z;
+    std::tie(x,y,z) = to_xyz(indx,size);
+    std::cout<<x<<" "<<y<<" "<<z;
+}
 // Utilities.h (add at the end)
 
 inline int chebyshev_distance(int pos1, int pos2, int size) {

@@ -44,13 +44,13 @@ inline float BOX::compute_local_energy(int index) const {
 // For RNA
 inline float RNA::compute_local_energy(const BOX& box) const {
     float local_energy = 0.0f;
-    for (const auto& idx : monomers) {
-        auto neighbors = box.get_neighbors(idx);
-        for (const auto& nidx : neighbors) {
-            auto neighbor_obj = box.get_lattice(nidx);
-            local_energy -= box.E[Index()][neighbor_obj->Index()];
-        }
+    //for (const auto& idx : monomers) {
+    auto neighbors = box.get_neighbors(monomers->at(index));
+    for (const auto& nidx : neighbors) {
+        auto neighbor_obj = box.get_lattice(nidx);
+        local_energy -= box.E[Index()][neighbor_obj->Index()];
     }
+    //}
     return local_energy;
 }
 

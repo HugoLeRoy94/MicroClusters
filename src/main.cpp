@@ -3,10 +3,10 @@
 #include <algorithm>
 
 int main() {
-    int size = 128;
-    int nparticles = 210;
-    int npolymers = 0;
-    int lpolymer = 0;
+    int size = 32;
+    int nparticles = 3;
+    int npolymers = 1;
+    int lpolymer = 2;
     float temperature = 0.1f;
     double Evalence=0;
 
@@ -16,11 +16,19 @@ int main() {
         {0.0f, 2.5f, 0.0f},
         {0.0f, 0.0f, 0.0f}
     };
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    
+    // Define the range for the random integer (e.g., 1 to 100)
+    std::uniform_int_distribution<> distr(1, 100);
 
-    MC simulation(size, nparticles, npolymers, lpolymer, interactions,Evalence, temperature,651);
-    for (int i=0;i<10;i++){
+    // Generate a random integer
+    int randomInt = distr(gen);
+    std::cout<<randomInt<<"\n";
+    MC simulation(size, nparticles, npolymers, lpolymer, interactions,Evalence, temperature,13);
+    for (int i=0;i<1;i++){
     std::cout<<i<<std::endl;
-    simulation.monte_carlo_steps(pow(10,6));
+    simulation.monte_carlo_steps(pow(10,2));
 
     }
     // Compute cluster sizes

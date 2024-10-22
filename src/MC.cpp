@@ -15,15 +15,16 @@ MC::MC(int size, int nparticles_, int npolymers_, int lpolymer_, const std::vect
     std::cout<<"particles successfully added"<<std::endl;
 
     // Adjust the weight to make the probability of picking a polymer proportional to its length    
-    weights.resize(box.objects.size());
-    for (size_t i = 0; i < box.objects.size(); ++i) {
-        if (i < static_cast<size_t>(npolymers)) {
-            weights[i] = lpolymer;
-        } else {
-            weights[i] = 1;
-        }
-    }
-    dist = std::discrete_distribution<int>(weights.begin(), weights.end());
+    //weights.resize(box.objects.size());
+    //for (size_t i = 0; i < box.objects.size(); ++i) {
+    //    if (i < static_cast<size_t>(npolymers)) {
+    //        weights[i] = lpolymer;
+    //    } else {
+    //        weights[i] = 1;
+    //    }
+    //}
+    //dist = std::discrete_distribution<int>(weights.begin(), weights.end());
+    dist = std::uniform_int_distribution<int>(0,box.objects.size()-1);
 }
 // Function to get positions of all DHH1 particles
 std::vector<int> MC::get_DHH1_positions() const {
@@ -95,6 +96,7 @@ bool MC::monte_carlo_step() {
 
     int counter = 0;
     while (counter < pow(box.size, 3)){
+        //std::cout<<counter<<" "<<pow(box.size, 3)<<std::endl;
         counter++;
         int idx = dist(rng);
         auto object1 = box.objects[idx];        
@@ -112,32 +114,44 @@ bool MC::monte_carlo_step() {
 
         object1->get_swap_site_candidate(objects1,objects2, sites1,sites2, box, rng);
         if (sites2.back() == -1) {
-            for(auto it : sites2){
-                std::cout<<it<<std::endl;
-            }
-            for(auto it : sites1){
-                std::cout<<it<<std::endl;
-            }
+            //for(auto it : sites2){
+            //    std::cout<<it<<std::endl;
+            //}
+            //for(auto it : sites1){
+            //    std::cout<<it<<std::endl;
+            //}
             continue; // No valid candidate found, try again
         }
 
             // Create a move proposal
             Move move(objects1, objects2,sites1, sites2);
-
-            // Validate the move
-            if (!move.validate(box)) {
-                std::cout<<"move invalidate"<<std::endl;
-                continue;
-            }            
             // Compute energy before the move
             float initial_energy(0);
             for( int i = 0; i<sites1.size();i++){
                 initial_energy += box.compute_local_energy(sites1[i]) + box.compute_local_energy(sites2[i]);
             }
-
+            std::cout<<"before \n object 1:\n";
+            for(auto& object: objects1){object->print_position(box.size);}
+            std::cout<<"object 2:\n";
+            for(auto& object: objects2){object->print_position(box.size);}
+            std::cout<<"\n";
             // Apply the move
             move.apply(box);
+            std::cout<<"after \n object 1:\n";
+            for(auto& object: objects1){object->print_position(box.size);}
+            std::cout<<"object 2:\n";
+            for(auto& object: objects2){object->print_position(box.size);}
+            std::cout<<"\n";
 
+                        // Validate the move
+            if (!move.validate(box)) {
+                std::cout<<"move invalidate------------------------------------------"<<std::endl;
+                move.revert(box);
+                continue;
+            }
+            //else{
+            //    std::cout<<"move validated"<<std::endl;
+            //}   
 
             // Compute energy after the move
             float final_energy(0);

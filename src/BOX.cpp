@@ -37,33 +37,27 @@ void BOX::create_new_DHH1(int index){
     objects.push_back(new_dhh1);
 }
 
-std::shared_ptr<RNA> BOX::add_RNA(int length) {
+// BOX.cpp
+
+void BOX::add_RNA(int length) {
     int start_index = random_free_site();
-    // Initialize data structures
-    std::vector<int> monomers;
-    monomers.reserve(length);
-    monomers.push_back(start_index);
+
+    // Build monomer positions
+    std::vector<int> monomer_positions;
+    monomer_positions.reserve(length);
+    monomer_positions.push_back(start_index);
 
     std::unordered_set<int> monomer_set;
     monomer_set.insert(start_index);
 
-    // Check if the starting position is empty
-    if (!get_lattice(start_index)->isempty()) {
-        throw std::runtime_error("Starting position is already occupied");
-    }
-    
-    // Initialize RNG   
-    //static std::mt19937 rng(std::random_device{}());
-
-    // Build the polymer
     for (int i = 1; i < length; ++i) {
-        std::vector<int> neighbors = get_neighbors(monomers[i - 1]);
+        std::vector<int> neighbors = get_neighbors(monomer_positions[i - 1]);
         std::shuffle(neighbors.begin(), neighbors.end(), rng);
 
         bool found = false;
         for (const auto& neighbor_idx : neighbors) {
             if (get_lattice(neighbor_idx)->isempty() && monomer_set.find(neighbor_idx) == monomer_set.end()) {
-                monomers.push_back(neighbor_idx);
+                monomer_positions.push_back(neighbor_idx);
                 monomer_set.insert(neighbor_idx);
                 found = true;
                 break;
@@ -71,26 +65,24 @@ std::shared_ptr<RNA> BOX::add_RNA(int length) {
         }
 
         if (!found) {
-            // Dead end encountered; clean up and throw an exception
-            for (const auto& monomer_idx : monomers) {
+            // Clean up and throw exception
+            for (const auto& monomer_idx : monomer_positions) {
                 lattice[monomer_idx] = std::make_shared<Empty>(monomer_idx);
             }
             throw std::runtime_error("Unable to place RNA polymer due to dead end");
         }
     }
 
-    // At this point, the monomer positions are determined
-    // Now, create the RNA object
-    auto rna = std::make_shared<RNA>(monomers);
-    objects.push_back(rna);
+    // Create RNA monomer objects
+    auto monomers = std::make_shared<std::vector<int>>(monomer_positions);
 
-    // Update the lattice with the RNA object
-    for (const auto& monomer_idx : monomers) {
-        lattice[monomer_idx] = rna;
+    for (int idx = 0; idx < monomers->size(); ++idx) {
+        auto rna = std::make_shared<RNA>(monomers, idx);
+        objects.push_back(rna);
+        lattice[monomers->at(idx)] = rna;
     }
-
-    return rna;
 }
+
 
 std::shared_ptr<Object> BOX::get_lattice(int index) const {
     return lattice[index];

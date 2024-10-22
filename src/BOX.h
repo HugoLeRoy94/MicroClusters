@@ -23,7 +23,7 @@ public:
     BOX(int size_, int nobjects,const std::vector<std::vector<float>>& Interactions,double Evalence_,std::mt19937& rng_);
 
     void create_new_DHH1(int index);
-    std::shared_ptr<RNA> add_RNA(int length);
+    void add_RNA(int length);
     std::shared_ptr<Object> get_lattice(int index) const;
     void set_lattice(int index, std::shared_ptr<Object> obj);
     float compute_local_energy(int index) const;

@@ -1,7 +1,7 @@
 #ifndef MOVE_H
 #define MOVE_H
 
-#include <tuple>
+#include <unordered_map>
 #include <memory>
 #include "Objects.h"
 #include "BOX.h"
@@ -26,12 +26,14 @@ public:
 
 private:
     void swap_sites(int site1, int site2,std::shared_ptr<Object> obj1, std::shared_ptr<Object> obj2,BOX& box);
+    void move(std::shared_ptr<Object> object, int site, BOX& box);
 
     std::vector<std::shared_ptr<Object>> objects1;
     std::vector<std::shared_ptr<Object>> objects2;
     std::vector<int> sites1;
     std::vector<int> sites2;
-    MoveType move_type;
+    MoveType move_typ;
+    std::unordered_map<int,int> rflow;
     // Store any additional state needed to revert the move
 };
 

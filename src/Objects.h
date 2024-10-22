@@ -29,7 +29,7 @@ Object(int position_);
     virtual ~Object();
     int getPosition() const;
     virtual std::vector<int> get_positions() const;
-    virtual void setPosition(int old_pos, int new_pos );
+    virtual void setPosition(int new_pos );
 
     virtual void get_swap_site_candidate(std::vector<std::shared_ptr<Object>>& object1,
                                         std::vector<std::shared_ptr<Object>>& object2,
@@ -42,8 +42,11 @@ Object(int position_);
 
     virtual float compute_local_energy(const BOX& box) const = 0;
 
-    virtual bool would_be_connected_after_move(int idx, int new_pos, int L) const = 0;
-    virtual int get_monomer_index(int site) const = 0;
+    virtual bool isconnected(const BOX& box) const ;
+    virtual int get_monomer_index() const;
+
+    virtual void print_position(int size) const;
+    bool moved;
     
 };
 
@@ -56,37 +59,39 @@ public:
     virtual bool isempty() const override;
     virtual int Index() const override;
     virtual float compute_local_energy(const BOX& box) const override;
-    virtual bool would_be_connected_after_move(int idx, int new_pos, int L) const override;
     virtual void get_swap_site_candidate(std::vector<std::shared_ptr<Object>>& object1,
                                         std::vector<std::shared_ptr<Object>>& object2,
                                         std::vector<int>& sites1,
                                         std::vector<int>& sites2,
                                          const BOX& box, std::mt19937& rng) override;
-    virtual int get_monomer_index(int site) const;
 };
 
 class RNA : public Object{
     friend class BOX;  // Declare BOX as a friend class
-    friend class Move;
-protected:    
-    bool isconnected(int idx, const BOX& box) const;
+protected:        
     virtual void get_swap_site_candidate(std::vector<std::shared_ptr<Object>>& object1,
                                         std::vector<std::shared_ptr<Object>>& object2,
                                         std::vector<int>& sites1,
                                         std::vector<int>& sites2,
                                          const BOX& box, std::mt19937& rng) override;
-    std::vector<int> monomers;
+    std::shared_ptr<std::vector<int>> monomers;
+    int index;
     
 public:
-    RNA(std::vector<int>& monomers_);
+    RNA(std::shared_ptr<std::vector<int>> monomers_, int index_);
     virtual ~RNA();
     virtual int Index() const override;
     virtual float compute_local_energy(const BOX& box) const override;
-    virtual void setPosition(int old_pos, int new_pos) override;
+    virtual void setPosition(int new_pos) override;
     virtual std::vector<int> get_positions() const override;
-    int get_monomer_index(int position) const;
-    bool would_be_connected_after_move(int idx, int new_pos, int L) const;
+    int get_monomer_index() const;
+    bool isconnected(const BOX& box) const;
+    virtual void print_position(int size) const override;
+private:
+
 };
+
+
 
 class DHH1 : public Object {
     friend class BOX;  // Declare BOX as a friend class
@@ -101,8 +106,6 @@ public:
                                         std::vector<int>& sites2,
                                         const BOX& box, std::mt19937& rng) override;
     virtual float compute_local_energy(const BOX& box) const override;
-    virtual bool would_be_connected_after_move(int idx, int new_pos, int L) const override;
-    virtual int get_monomer_index(int site) const;
     };
 
 #endif // OBJECTS_H
