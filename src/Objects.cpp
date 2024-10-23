@@ -144,14 +144,20 @@ void RNA::get_swap_site_candidate(std::vector<std::shared_ptr<Object>>& object1,
     }
     else{
         // select a direction by selecting a random neighbor index
-        std::uniform_int_distribution<int> prob_dist(0, 26);
+        std::uniform_int_distribution<int> prob_dist(0, 25);
         int idx = prob_dist(rng);
         for(int i =0; i<monomers->size();i++){
             object1.push_back(box.get_lattice(monomers->at(i)));
             sites1.push_back(monomers->at(i));
+            //for(auto& it: box.get_neighbors(monomers->at(i))){
+            //    int x,y,z;
+            //    std::tie(x,y,z)= to_xyz(it,box.size);
+            //    std::cout<<x<<" "<<y<<" "<<z<<"\n";
+            //}            
             int site2(box.get_neighbors(monomers->at(i))[idx]);
             sites2.push_back(site2);
             object2.push_back(box.get_lattice(site2));}
+            //std::cout<<idx<<" \n";
         }
     }
 

@@ -29,7 +29,13 @@ int main() {
     for (int i=0;i<1;i++){
     std::cout<<i<<std::endl;
     simulation.monte_carlo_steps(pow(10,2));
-
+    }
+    std::cout<<simulation.get_RNA_positions().size()<<"\n";
+    for(auto& it1 : simulation.get_RNA_positions()){
+        for(auto& it: it1){
+            std::cout<<it<<"-";
+        }
+        std::cout<<std::endl;
     }
     // Compute cluster sizes
     //std::vector<int> cluster_sizes = simulation.box.cluster_size();

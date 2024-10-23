@@ -55,6 +55,8 @@ public:
 
     std::vector<int> generate_unique_indices(int N);
 
+    void check_consistencty();
+
 private:
     int npolymers;
     // Disallow copying

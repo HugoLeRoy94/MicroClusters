@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <iostream>
+#include <set>
 #include "ComputeLocalEnergy.h"
 
 MC::MC(int size, int nparticles_, int npolymers_, int lpolymer_, const std::vector<std::vector<float>>& interactions,double Evalence_, float temperature, int seed)
@@ -39,13 +40,14 @@ std::vector<int> MC::get_DHH1_positions() const {
 
 // Function to get positions of all RNA polymers
 std::vector<std::vector<int>> MC::get_RNA_positions() const {
-    std::vector<std::vector<int>> all_positions;
+    std::set<std::vector<int>> all_positions;
     for (const auto& obj : box.objects) {
         if (obj->Index() == 2) { // RNA objects have Index() == 2
-            all_positions.push_back(obj->get_positions());
+            all_positions.insert(obj->get_positions());
         }
     }
-    return all_positions;
+    std::vector<std::vector<int>> all_positions_vec(all_positions.begin(),all_positions.end());
+    return all_positions_vec;
 }
 void MC::generate_polymers(int npolymers, int lpolymer) {
     int npoly = 0;
@@ -130,18 +132,18 @@ bool MC::monte_carlo_step() {
             for( int i = 0; i<sites1.size();i++){
                 initial_energy += box.compute_local_energy(sites1[i]) + box.compute_local_energy(sites2[i]);
             }
-            std::cout<<"before \n object 1:\n";
-            for(auto& object: objects1){object->print_position(box.size);}
-            std::cout<<"object 2:\n";
-            for(auto& object: objects2){object->print_position(box.size);}
-            std::cout<<"\n";
+            //std::cout<<"before \n object 1:\n";
+            //for(auto& object: objects1){object->print_position(box.size);}
+            //std::cout<<"object 2:\n";
+            //for(auto& object: objects2){object->print_position(box.size);}
+            //std::cout<<"\n";
             // Apply the move
             move.apply(box);
-            std::cout<<"after \n object 1:\n";
-            for(auto& object: objects1){object->print_position(box.size);}
-            std::cout<<"object 2:\n";
-            for(auto& object: objects2){object->print_position(box.size);}
-            std::cout<<"\n";
+            //std::cout<<"after \n object 1:\n";
+            //for(auto& object: objects1){object->print_position(box.size);}
+            //std::cout<<"object 2:\n";
+            //for(auto& object: objects2){object->print_position(box.size);}
+            //std::cout<<"\n";
 
                         // Validate the move
             if (!move.validate(box)) {
@@ -161,6 +163,8 @@ bool MC::monte_carlo_step() {
 
             // Calculate energy difference
             float delta_e = final_energy - initial_energy;
+
+            //box.check_consistencty();
 
             // Decide whether to accept the move
             std::uniform_real_distribution<float> rand_dist(0.0f, 1.0f);

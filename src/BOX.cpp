@@ -13,6 +13,7 @@
 #include <stack>
 #include <numeric>
 #include <vector>
+#include <set>
 
 BOX::BOX(int size_, int nobjects, const std::vector<std::vector<float>>& Interactions,double Evalence_,std::mt19937& rng_)
     : size(size_), E(Interactions), Evalence(Evalence_), rng(rng_){
@@ -152,6 +153,24 @@ int BOX::random_free_site(){
         if(lattice[idx]->isempty()){return idx;}
     }
 }
+
+void BOX::check_consistencty(){
+    for(auto& object: objects){
+        if(lattice.at(object->getPosition())!=object){
+            throw std::length_error("object position and lattice inconsistent");
+        }
+    }
+    std::set<int> poses;
+    for(auto& object: objects){
+        if(std::find(poses.begin(),poses.end(),object->getPosition())==poses.end()){
+            poses.insert(object->getPosition());
+        }
+        else{
+            throw std::length_error("two objects at the same position");
+        }
+    }
+}
+
 // Placeholder implementations for build_clusters, cluster_size, and compute_av_Nneigh
 // Clustering Functions
 

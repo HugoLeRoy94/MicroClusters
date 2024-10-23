@@ -117,14 +117,15 @@ int MC_fill_RNA_positions(MC* mc,
     const auto& all_positions = mc->get_RNA_positions();
     int rna_count = static_cast<int>(all_positions.size());
     if (lengths_array_length < rna_count) {
-        return -1; // Not enough space for lengths
+
+        return -2; // Not enough space for lengths
     }
     int total_positions = 0;
     for (const auto& positions : all_positions) {
         total_positions += static_cast<int>(positions.size());
     }
     if (positions_array_length < total_positions) {
-        return -1; // Not enough space for positions
+        return -3; // Not enough space for positions
     }
     int pos_index = 0;
     for (int i = 0; i < rna_count; ++i) {

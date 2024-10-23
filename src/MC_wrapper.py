@@ -218,6 +218,9 @@ class MC:
                                              positions_ptr, self.npolymers*self.lpolymer,
                                              lengths_ptr, self.npolymers)
         if res != self.npolymers*self.lpolymer:
+            print(res)
+            print(self.npolymers)
+            print(self.lpolymer)
             raise ValueError("Error filling RNA positions")
 
         # Split positions_array into individual RNA polymers using lengths_array
@@ -339,7 +342,7 @@ def plot_simulation(mc, output_filename='simulation.html'):
             # plot segment from last to first and first to last, for correct boundary conditions reprsentation
             for i in range(-num_monomers+1,num_monomers - 1):
                 if i==-1: #avoid looping segment
-                    pass
+                    continue
                 p1 = coords[i]
                 p2 = coords[i + 1]
 
