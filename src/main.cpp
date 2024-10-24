@@ -3,18 +3,18 @@
 #include <algorithm>
 
 int main() {
-    int size = 32;
-    int nparticles = 0;
-    int npolymers = 1;
-    int lpolymer = 2;
+    int size = 64;
+    int nparticles = 100;
+    int npolymers = 10;
+    int lpolymer = 20;
     float temperature = 0.1f;
-    double Evalence=0;
+    double Evalence=1;
 
     // Define interaction matrix E (3x3 matrix for example)
     std::vector<std::vector<float>> interactions = {
         {0.0f, 0.0f, 0.0f},
-        {0.0f, 2.5f, 0.0f},
-        {0.0f, 0.0f, 0.0f}
+        {0.0f, 0.0f, 2.0f},
+        {0.0f, 2.0f, 0.0f}
     };
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -25,18 +25,18 @@ int main() {
     // Generate a random integer
     int randomInt = distr(gen);
     std::cout<<randomInt<<"\n";
-    MC simulation(size, nparticles, npolymers, lpolymer, interactions,Evalence, temperature,13);
+    MC simulation(size, nparticles, npolymers, lpolymer, interactions,Evalence, temperature,13,0.5);
     for (int i=0;i<1;i++){
-    std::cout<<i<<std::endl;
-    simulation.monte_carlo_steps(pow(10,0));
+    //std::cout<<i<<std::endl;
+    simulation.monte_carlo_steps(pow(10,6));
     }
     std::cout<<simulation.get_RNA_positions().size()<<"\n";
-    for(auto& it1 : simulation.get_RNA_positions()){
-        for(auto& it: it1){
-            std::cout<<it<<"-";
-        }
-        std::cout<<std::endl;
-    }
+    //for(auto& it1 : simulation.get_RNA_positions()){
+    //    for(auto& it: it1){
+    //        std::cout<<it<<"-";
+    //    }
+    //    std::cout<<std::endl;
+    //}
     // Compute cluster sizes
     //std::vector<int> cluster_sizes = simulation.box.cluster_size();
     //std::cout << "Cluster sizes:\n";

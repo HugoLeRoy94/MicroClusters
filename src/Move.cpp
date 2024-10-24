@@ -37,45 +37,37 @@ bool Move::validate(const BOX& box) const {
 }
 
 void Move::apply(BOX& box) {
-    //std::cout<<"flow\n";
-    //for(auto& it : rflow){
-    //    std::cout<<it.first<<" "<<it.second<<"\n";
-    //}
-    //std::cout<<"objects2\n";
-    //for(auto& obj: objects2){
-    //    std::cout<<obj->getPosition()<<std::endl;
-    //}
-    //std::cout<<"Objects1\n";
-    //for(auto& obj: objects1){
-    //    std::cout<<obj->getPosition()<<std::endl;
-    //}
     // first moves the objects 1
-    // std::cout<<"move the block\n";
     for(int i =0; i < objects1.size();i++){
-        //objects1[i]->print_position(box.size);std::cout<<" index :"<<objects1[i]->get_monomer_index()<<"\n";
-        // int x,y,z;
-        // std::tie(x,y,z) = to_xyz(sites2[i],box.size);
-        // std::cout<<x<<" "<<y<<" "<<z<<"\n";
         move(objects1[i],sites2[i],box);
         objects1[i]->moved = true;
     }
-    //for(auto& object: objects1){object->print_position(box.size);}
-    //for(auto& object: objects2){object->print_position(box.size);}
-    for(auto& object : objects2){
+    // moves the second object according to the flow matrix
+    /*for(auto& object : objects2){
         if(object->moved){continue;}
         int new_pos(object->getPosition());
         try{
             while(true){
-                //std::cout<<"--------------------\n";
                 new_pos += rflow.at(new_pos);
             }
         } catch(const std::out_of_range& e){}
-        //std::cout<<"new_pos\n";
-        //std::cout<<new_pos<<"\n";        
         move(object,new_pos,box);
+    }*/
+    for (auto& object : objects2) {
+        if (object->moved) {
+            continue;
+        }
+        int new_pos = object->getPosition();
+        while (true) {
+            auto it = rflow.find(new_pos);
+            if (it != rflow.end()) {
+                new_pos += it->second;
+            } else {
+                break;
+            }
+        }
+        move(object, new_pos, box);
     }
-    //for(auto& object: objects1){object->print_position(box.size);}
-    //for(auto& object: objects2){object->print_position(box.size);}
     // Invalidate cluster data if necessary
     box.clusters_valid = false;
     for(auto& object: objects1){object->moved=false;}
