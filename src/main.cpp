@@ -4,7 +4,7 @@
 
 int main() {
     int size = 32;
-    int nparticles = 3;
+    int nparticles = 0;
     int npolymers = 1;
     int lpolymer = 2;
     float temperature = 0.1f;
@@ -28,7 +28,7 @@ int main() {
     MC simulation(size, nparticles, npolymers, lpolymer, interactions,Evalence, temperature,13);
     for (int i=0;i<1;i++){
     std::cout<<i<<std::endl;
-    simulation.monte_carlo_steps(pow(10,2));
+    simulation.monte_carlo_steps(pow(10,0));
     }
     std::cout<<simulation.get_RNA_positions().size()<<"\n";
     for(auto& it1 : simulation.get_RNA_positions()){

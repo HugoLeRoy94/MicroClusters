@@ -1,5 +1,6 @@
 // MC.cpp
 #include "MC.h"
+#include "Objects.h"
 #include <random>
 #include <algorithm>
 #include <stdexcept>
@@ -7,8 +8,9 @@
 #include <set>
 #include "ComputeLocalEnergy.h"
 
-MC::MC(int size, int nparticles_, int npolymers_, int lpolymer_, const std::vector<std::vector<float>>& interactions,double Evalence_, float temperature, int seed)
+MC::MC(int size, int nparticles_, int npolymers_, int lpolymer_, const std::vector<std::vector<float>>& interactions,double Evalence_, float temperature, int seed, double diff_moves_ratio)
     : nparticles(nparticles_), npolymers(npolymers_), lpolymer(lpolymer_), E(interactions), T(temperature), box(size, nparticles_ + npolymers_, interactions,Evalence_,rng) {        
+    RNA::diff_moves_ratio = diff_moves_ratio;
     rng.seed(seed);
     generate_polymers(npolymers, lpolymer);
     std::cout<<"polymer successfully generated"<<std::endl;
@@ -142,12 +144,12 @@ bool MC::monte_carlo_step() {
             //std::cout<<"after \n object 1:\n";
             //for(auto& object: objects1){object->print_position(box.size);}
             //std::cout<<"object 2:\n";
-            //for(auto& object: objects2){object->print_position(box.size);}
+            //for(auto& object//: objects2){object->print_position(box.size);}
             //std::cout<<"\n";
 
                         // Validate the move
             if (!move.validate(box)) {
-                std::cout<<"move invalidate------------------------------------------"<<std::endl;
+                //std::cout<<"move invalidate------------------------------------------"<<std::endl;
                 move.revert(box);
                 continue;
             }

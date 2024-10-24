@@ -10,6 +10,8 @@
 #include <iostream>
 
 
+double RNA::diff_moves_ratio = 0;
+
 // Object Class Implementation
 Object::Object(int position_) : position(position_) {moved=false;}
 Object::~Object() {}
@@ -122,7 +124,7 @@ void RNA::get_swap_site_candidate(std::vector<std::shared_ptr<Object>>& object1,
     std::uniform_real_distribution<double> prob_dist(0.0, 1.0);
     double move_type_prob = prob_dist(rng);
 
-    if (move_type_prob < 0.) {
+    if (move_type_prob < 1-RNA::diff_moves_ratio) {
         // Single monomer move (50% probability)
         // single monomer move
         // Get neighbors of the site
@@ -139,6 +141,7 @@ void RNA::get_swap_site_candidate(std::vector<std::shared_ptr<Object>>& object1,
             if (neighbor_obj.get() != this) {
                 sites2.push_back(neighbor_idx);
                 object2.push_back(neighbor_obj);
+                return;
             }
         }
     }
@@ -173,13 +176,17 @@ void DHH1::get_swap_site_candidate(std::vector<std::shared_ptr<Object>>& object1
                                     std::vector<int>& sites2, const BOX& box, std::mt19937& rng){
     object1.push_back(shared_from_this());
     sites1.push_back(position);
-    // Initialize RNG
-    //static std::mt19937 rng(std::random_device{}());
+    /*
+    make a long move in the box
     std::uniform_int_distribution<int> dist(0, box.lattice.size() - 1);
     int idx;
     do {
         idx = dist(rng);
     } while (idx == position);
+    */
+   // move it to its neighbor
+    std::uniform_int_distribution<int> dist(0,25);
+    int idx(box.get_neighbors(position)[dist(rng)]);
     sites2.push_back(idx);
     object2.push_back(box.get_lattice(idx));
 }

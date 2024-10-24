@@ -8,7 +8,7 @@
 extern "C" {
 
 // Function to create a new MC instance.
-MC* MC_new(int size, int nparticles, int npolymers, int lpolymer, const float* interactions_flat, int interactions_size,double Evalence, float temperature,int seed) {
+MC* MC_new(int size, int nparticles, int npolymers, int lpolymer, const float* interactions_flat, int interactions_size,double Evalence, float temperature,int seed,double diff_moves_ratio) {
     // Convert interactions_flat to std::vector<std::vector<float>>
     int n = interactions_size;
     std::vector<std::vector<float>> interactions(n, std::vector<float>(n));
@@ -18,7 +18,7 @@ MC* MC_new(int size, int nparticles, int npolymers, int lpolymer, const float* i
         }
     }
     // Create the MC instance.
-    MC* mc = new MC(size, nparticles, npolymers, lpolymer, interactions,Evalence, temperature,seed);
+    MC* mc = new MC(size, nparticles, npolymers, lpolymer, interactions,Evalence, temperature,seed,diff_moves_ratio);
     return mc;
 }
 
@@ -97,7 +97,7 @@ double MC_get_energy(MC* mc){
     return mc->get_energy();
 }
 int MC_fill_DHH1_positions(MC* mc, int* positions_array, int array_length) {
-    if (!mc || !positions_array || array_length <= 0) return -1;
+    if (!mc || !positions_array || array_length < 0) return -1;
     const std::vector<int>& positions = mc->get_DHH1_positions();
     int size = static_cast<int>(positions.size());
     if (array_length < size) {
@@ -110,8 +110,8 @@ int MC_fill_DHH1_positions(MC* mc, int* positions_array, int array_length) {
 int MC_fill_RNA_positions(MC* mc,
                           int* positions_array, int positions_array_length,
                           int* lengths_array, int lengths_array_length) {
-    if (!mc || !positions_array || positions_array_length <= 0 ||
-        !lengths_array || lengths_array_length <= 0) {
+    if (!mc || !positions_array || positions_array_length < 0 ||
+        !lengths_array || lengths_array_length < 0) {
         return -1; // Error
     }
     const auto& all_positions = mc->get_RNA_positions();

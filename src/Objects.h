@@ -87,7 +87,9 @@ public:
     int get_monomer_index() const;
     bool isconnected(const BOX& box) const;
     virtual void print_position(int size) const override;
+    static double diff_moves_ratio;
 private:
+
 
 };
 

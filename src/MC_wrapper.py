@@ -8,7 +8,7 @@ def is_power_of_two(n):
     return n > 0 and (n & (n - 1)) == 0
 
 class MC:
-    def __init__(self, size, nparticles, npolymers, lpolymer, interactions,Evalence, temperature=1.,seed=98765):
+    def __init__(self, size, nparticles, npolymers, lpolymer, interactions,Evalence, temperature=1.,seed=98765,diff_moves_ratio=0.):
         if not is_power_of_two(size):
             raise ValueError("Size must be a power of 2.")
         # Load the shared library
@@ -39,7 +39,8 @@ class MC:
             ctypes.c_int,  # interactions_size
             ctypes.c_double, # limited valence interaction
             ctypes.c_float,  # temperature
-            ctypes.c_int
+            ctypes.c_int,    # seed
+            ctypes.c_double  # ratio of diffusive moves
         ]
         self.lib.MC_new.restype = ctypes.c_void_p  # Return a pointer to MC
 
@@ -119,7 +120,8 @@ class MC:
             n,
             Evalence,
             temperature,
-            seed
+            seed,
+            diff_moves_ratio
         )
 
     def __del__(self):
@@ -201,6 +203,8 @@ class MC:
         positions_ptr = positions_array.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
         res = self.lib.MC_fill_DHH1_positions(self.Address, positions_ptr, self.nparticles)
         if res!=self.nparticles:
+            print(res)
+            print(self.nparticles)
             raise ValueError("Error filling DHH1 positions")
         return positions_array
 
@@ -299,8 +303,33 @@ def generate_lattice_vertices(size):
     grid_points = np.column_stack((X.ravel(), Y.ravel(), Z.ravel()))
     return grid_points
 
-def plot_simulation(mc, output_filename='simulation.html'):
-    size = mc.size
+def create_plotter(size):
+    # Create a PyVista plotter
+    plotter = pv.Plotter()
+
+    # Add the box contour as a light black wireframe cube
+    box_center = (size / 2 - 0.5, size / 2 - 0.5, size / 2 - 0.5)
+    box = pv.Cube(center=box_center, x_length=size, y_length=size, z_length=size)
+    plotter.add_mesh(box, color='black', opacity=0.2, style='wireframe', line_width=1)
+
+    # Set plotter options
+    plotter.set_background('white')
+    plotter.show_axes()
+    plotter.show_bounds(
+        grid='front',          # Show grid on the front face
+        location='outer',      # Place labels outside the bounding box
+        all_edges=True,        # Show all edges of the grid
+        xtitle='X Axis',       # Label for the X-axis
+        ytitle='Y Axis',       # Label for the Y-axis
+        ztitle='Z Axis'        # Label for the Z-axis
+    )
+    # Optional: Set the camera position
+    plotter.view_isometric()
+
+    return plotter
+
+def add_system(mc, plotter, dhh1_color='red', rna_color='blue'):
+    size = mc.size  # Get the size from the Monte Carlo object
 
     # Get DHH1 positions and convert to coordinates
     dhh1_positions = mc.get_DHH1_positions()
@@ -313,25 +342,10 @@ def plot_simulation(mc, output_filename='simulation.html'):
         coords = np.array([to_xyz(pos, size) for pos in rna_positions])
         rna_coords_list.append(coords)
 
-    # Generate lattice vertices
-    lattice_vertices = generate_lattice_vertices(size)
-
-    # Create a PyVista plotter
-    plotter = pv.Plotter()
-
-    # Add the box contour as a light black wireframe cube
-    box_center = (size / 2 - 0.5, size / 2 - 0.5, size / 2 - 0.5)
-    box = pv.Cube(center=box_center, x_length=size, y_length=size, z_length=size)
-    plotter.add_mesh(box, color='black', opacity=0.2, style='wireframe', line_width=1)
-
-    # Add lattice vertices as small black dots
-    #lattice_points = pv.PolyData(lattice_vertices)
-    #plotter.add_mesh(lattice_points, color='black', point_size=2.5, render_points_as_spheres=True)
-
     # Add DHH1 particles as points
     if dhh1_coords.size > 0:
         dhh1_points = pv.PolyData(dhh1_coords)
-        plotter.add_mesh(dhh1_points, color='red', point_size=10.0, render_points_as_spheres=True)
+        plotter.add_mesh(dhh1_points, color=dhh1_color, point_size=10.0, render_points_as_spheres=True)
 
     # Plot RNA polymers as segments
     for coords in rna_coords_list:
@@ -339,10 +353,9 @@ def plot_simulation(mc, output_filename='simulation.html'):
             # Initialize lists to store line segments
             segments = []
             num_monomers = coords.shape[0]
-            # plot segment from last to first and first to last, for correct boundary conditions reprsentation
-            for i in range(-num_monomers+1,num_monomers - 1):
-                if i==-1: #avoid looping segment
-                    continue
+
+            # Plot segments between consecutive monomers
+            for i in range(num_monomers - 1):
                 p1 = coords[i]
                 p2 = coords[i + 1]
 
@@ -364,28 +377,21 @@ def plot_simulation(mc, output_filename='simulation.html'):
                 else:
                     # Segment is inside the box, add it directly
                     segments.append(np.array([p1, p2_unwrapped]))
+
             # Plot the segments
             for segment in segments:
                 line = pv.Line(segment[0], segment[1])
-                plotter.add_mesh(line, color='blue', line_width=3)
+                plotter.add_mesh(line, color=rna_color, line_width=3)
 
             # Also add monomer points
             monomer_points = pv.PolyData(coords)
-            plotter.add_mesh(monomer_points, color='blue', point_size=10.0, render_points_as_spheres=True)
+            plotter.add_mesh(monomer_points, color=rna_color, point_size=10.0, render_points_as_spheres=True)
 
-    # Set plotter options
-    plotter.set_background('white')
-    plotter.show_axes()
-    plotter.show_bounds(
-    grid='front',          # Show grid on the front face
-    location='outer',      # Place labels outside the bounding box
-    all_edges=True,        # Show all edges of the grid
-    xtitle='X Axis',       # Label for the X-axis
-    ytitle='Y Axis',       # Label for the Y-axis
-    ztitle='Z Axis'        # Label for the Z-axis
-    )
-    # Optional: Set the camera position
-    plotter.view_isometric()
-
-    # Save the plot as an HTML file
+def export_to_html(plotter, output_filename='simulation.html'):
     plotter.export_html(output_filename)
+
+
+def plot_simulation(mc, output_filename='simulation.html'):
+    plotter = create_plotter(mc.size)
+    add_system(mc,plotter)
+    export_to_html(plotter,output_filename)

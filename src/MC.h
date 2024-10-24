@@ -19,7 +19,7 @@ public:
 
     BOX box;
 
-    MC(int size, int nparticles_, int npolymers_, int lpolymer_, const std::vector<std::vector<float>>& interactions,double Evalence_, float temperature, int seed);
+    MC(int size, int nparticles_, int npolymers_, int lpolymer_, const std::vector<std::vector<float>>& interactions,double Evalence_, float temperature, int seed,double diff_moves_ratio);
 
     void generate_polymers(int npolymers, int lpolymer);
     void generate_particles(int nparticles);
