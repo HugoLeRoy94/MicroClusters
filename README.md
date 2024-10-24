@@ -126,7 +126,9 @@ The Python interface allows you to use the simulation conveniently within Python
 Import the `MC` class from `MC.py` in your Python script:
 
 ```python
-from MC_front import MC
+import sys
+sys.path.append('src/') # the path to the library
+from MC_wrapper import MC
 ```
 
 ## Examples
@@ -139,7 +141,9 @@ Here's a step-by-step example of how to set up and run a simulation.
 
 ```python
 import numpy as np
-from MC import MC
+import sys
+sys.path.append('src/')
+import MC_wrapper
 ```
 
 #### 2. **Define Simulation Parameters**:
@@ -167,12 +171,19 @@ Evalence = -0.3
 
 # Temperature set the energy unit
 temperature = 1.0
+
+# seed to make reproduceable simulations
+seed = 9876
+
+# ratio of diffusive vs conformational moves for the RNA
+# Careful, the diffusives moves slow-down the simulation by a lot
+diff_moves_ratio = 0.1
 ```
 
 #### 3. **Initialize the Simulation**:
 
 ```python
-mc = MC(size, nparticles, npolymers, lpolymer, interactions, Evalence, temperature, seed)
+mc = MC(size, nparticles, npolymers, lpolymer, interactions, Evalence, temperature, seed,diff_moves_ratio)
 ```
 
 #### 4. **Perform Monte Carlo Steps**:
@@ -224,6 +235,35 @@ plt.title('Distribution of Cluster Sizes')
 plt.show()
 ```
 
+### Plot the results
+
+```python
+# create a plot
+plotter = MC_wrapper.create_plotter(mc.size)
+# add a system to plot in
+MC_wrapper.add_system(mc,plotter)
+# export to a file
+MC_wrapper.export_to_html(plotter, 'simulation.html')
+```
+
+This is equivalent to run:
+```python
+Mc_wrapper.plot_simulation(mc)
+```
+
+However, it is also possible to plot several systems:
+
+```python
+plotter = MC_wrapper.create_plotter(mc.size)
+MC_wrapper.add_system(mc,plotter)
+for step in range(10):
+    mc.monte_carlo_steps(100)
+    # plot the system every 100 steps with a gradient color-coding
+    MC_wrapper.add_system(mc,plotter,dhh1_color=viridis(step/10.),rna_color=plasma(step/10.))
+# export the whole plot
+MC_wrapper.export_to_html(plotter, 'simulation.html')
+```
+
 ## API Reference
 
 ### MC Class
@@ -233,7 +273,7 @@ The `MC` class is the primary interface to the simulation.
 #### Constructor
 
 ```python
-MC(size, nparticles, npolymers, lpolymer, interactions, Evalence, temperature)
+MC(size, nparticles, npolymers, lpolymer, interactions, Evalence, temperature,seed, diff_moves_ratio)
 ```
 
 - **Parameters**:
@@ -245,6 +285,7 @@ MC(size, nparticles, npolymers, lpolymer, interactions, Evalence, temperature)
   - `Evalence` (float): Valence energy term.
   - `temperature` (float): Temperature of the system.
   - `seed` (int): seed to make reproducible simulations
+  - `diff_moves_ratio` (float) : percentage of diffusive to conformational moves for RNA
 
 #### Methods
 
