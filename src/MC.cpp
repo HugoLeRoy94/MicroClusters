@@ -17,6 +17,7 @@ MC::MC(int size, int nparticles_, int npolymers_, int lpolymer_, const std::vect
     generate_particles(nparticles);
     std::cout<<"particles successfully added"<<std::endl;
 
+    energy = compute_energy();
     // Adjust the weight to make the probability of picking a polymer proportional to its length    
     //weights.resize(box.objects.size());
     //for (size_t i = 0; i < box.objects.size(); ++i) {
@@ -175,7 +176,9 @@ bool MC::monte_carlo_step() {
                 move.revert(box);
                 return false;  // Move was rejected
             }
+            energy += delta_e;
             return true;  // Move was accepted
+            
         //}
     }
     throw std::out_of_range("No valid move found");
@@ -189,6 +192,10 @@ std::vector<bool> MC::monte_carlo_steps(int steps) {
     return success;
 }
 
-double MC::get_energy()const{
+double MC::compute_energy()const{
     return box.total_energy();
+}
+
+double MC::get_energy()const{
+    return energy;
 }

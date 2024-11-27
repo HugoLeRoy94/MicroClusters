@@ -25,9 +25,11 @@ public:
     void generate_particles(int nparticles);
     bool monte_carlo_step();
     std::vector<bool> monte_carlo_steps(int steps);
+    double compute_energy()const;
     double get_energy()const;
 
     private:
+        double energy;
         std::vector<int> weights;
         std::mt19937 rng;
         std::uniform_int_distribution<int> dist;
